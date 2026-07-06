@@ -7,6 +7,7 @@ import '../../capture/data/models/source_message_model.dart';
 import '../../capture/data/repositories/capture_repository.dart';
 import '../../capture/presentation/capture_sheet.dart';
 import '../../capture/presentation/voice_capture_sheet.dart';
+import '../../capture/presentation/image_capture_sheet.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 
@@ -66,6 +67,12 @@ class TodayScreen extends ConsumerWidget {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          FloatingActionButton.small(
+            heroTag: 'image',
+            onPressed: () => showImageCaptureSheet(context),
+            child: const Icon(Icons.image_rounded),
+          ),
+          const SizedBox(height: 8),
           FloatingActionButton.small(
             heroTag: 'voice',
             onPressed: () => showVoiceCaptureSheet(context),
