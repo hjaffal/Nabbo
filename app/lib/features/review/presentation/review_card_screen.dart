@@ -9,6 +9,7 @@ import '../../household/data/models/family_member_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 import '../data/models/extracted_item_model.dart';
 import '../data/repositories/review_repository.dart';
+import '../data/services/approval_service.dart';
 
 class ReviewCardScreen extends ConsumerWidget {
   final String householdId;
@@ -285,8 +286,8 @@ class ReviewCardScreen extends ConsumerWidget {
   }
 
   Future<void> _approve(BuildContext context, WidgetRef ref) async {
-    final repo = ref.read(reviewRepositoryProvider);
-    await repo.approveItem(householdId, item.id);
+    final service = ref.read(approvalServiceProvider);
+    await service.approveAndCommit(householdId, item);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Approved. Added to your plan.')),
@@ -333,6 +334,15 @@ class ReviewCardScreen extends ConsumerWidget {
     final repo = ref.read(householdRepositoryProvider);
     final members = await repo.getFamilyMembers(householdId);
 
+    // Only show parents/adults for ownership assignment (not children)
+    final adults = members.where((m) =>
+      m.role == MemberRole.primaryParent ||
+      m.role == MemberRole.secondaryParent ||
+      m.role == MemberRole.caregiver ||
+      m.role == MemberRole.grandparent ||
+      m.role == MemberRole.babysitter
+    ).toList();
+
     if (!context.mounted) return;
 
     final selected = await showModalBottomSheet<FamilyMemberModel>(
@@ -347,8 +357,11 @@ class ReviewCardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Assign owner', style: Theme.of(ctx).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text('Who is responsible for this?',
+                style: Theme.of(ctx).textTheme.bodySmall),
             const SizedBox(height: AppSpacing.lg),
-            ...members.map((m) => ListTile(
+            ...adults.map((m) => ListTile(
                   leading: CircleAvatar(
                     backgroundColor: AppColors.primaryLight,
                     child: Text(m.name[0], style: TextStyle(color: AppColors.primary)),
@@ -357,22 +370,27 @@ class ReviewCardScreen extends ConsumerWidget {
                   subtitle: Text(m.role.name),
                   onTap: () => Navigator.pop(ctx, m),
                 )),
+            if (adults.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Add a parent or caregiver in Settings first.'),
+              ),
           ],
         ),
       ),
     );
 
     if (selected != null && context.mounted) {
-      final reviewRepo = ref.read(reviewRepositoryProvider);
-      await reviewRepo.assignOwner(
+      final service = ref.read(approvalServiceProvider);
+      await service.approveAndCommit(
         householdId,
-        item.id,
+        item,
         ownerId: selected.id,
         ownerName: selected.name,
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Assigned to ${selected.name}.')),
+          SnackBar(content: Text('Assigned to ${selected.name} and approved.')),
         );
         Navigator.pop(context);
       }
