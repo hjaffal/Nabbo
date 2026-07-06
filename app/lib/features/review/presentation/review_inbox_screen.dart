@@ -12,22 +12,40 @@ class ReviewInboxScreen extends ConsumerWidget {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
+            // Colorful header
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                child: Text(
-                  'Review',
-                  style: Theme.of(context).textTheme.headlineSmall,
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.lavenderCard,
+                      AppColors.blushPink.withValues(alpha: 0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(28),
                 ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  'Items extracted from your messages will appear here.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Review',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: AppColors.deepTeal,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Items extracted from your messages appear here.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.deepTeal.withValues(alpha: 0.7),
+                          ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -53,23 +71,64 @@ class _EmptyReviewState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.lavenderCard.withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.inbox_outlined,
-                size: 36,
-                color: AppColors.deepTeal,
+            // Colorful stacked circles
+            SizedBox(
+              width: 100,
+              height: 100,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    top: 10,
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: AppColors.skyBlueCard,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: AppColors.mintCard,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 20,
+                    bottom: 0,
+                    child: Container(
+                      width: 55,
+                      height: 55,
+                      decoration: BoxDecoration(
+                        color: AppColors.peachCard,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  const Center(
+                    child: Icon(
+                      Icons.inbox_outlined,
+                      size: 32,
+                      color: AppColors.deepTeal,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             Text(
-              'Nothing to review.',
-              style: Theme.of(context).textTheme.titleMedium,
+              'Nothing to review yet.',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),

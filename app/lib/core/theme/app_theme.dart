@@ -216,38 +216,44 @@ class AppTheme {
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: AppColors.surface,
+          backgroundColor: AppColors.deepTeal,
           elevation: 0,
           height: 72,
-          indicatorColor: AppColors.deepTeal.withValues(alpha: 0.1),
+          indicatorColor: AppColors.limeAccent.withValues(alpha: 0.2),
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
               return const TextStyle(
                 fontFamily: 'NunitoSans',
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AppColors.deepTeal,
+                color: AppColors.limeAccent,
               );
             }
             return const TextStyle(
               fontFamily: 'NunitoSans',
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
+              color: AppColors.textOnDarkMuted,
             );
           }),
           iconTheme: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
               return const IconThemeData(
-                color: AppColors.deepTeal,
+                color: AppColors.limeAccent,
                 size: 24,
               );
             }
             return const IconThemeData(
-              color: AppColors.textSecondary,
+              color: AppColors.textOnDarkMuted,
               size: 24,
             );
           }),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: AppColors.vibrantTeal,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shape: StadiumBorder(),
         ),
         chipTheme: ChipThemeData(
           backgroundColor: AppColors.surface,
