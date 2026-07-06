@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../capture/data/models/source_message_model.dart';
 import '../../capture/data/repositories/capture_repository.dart';
 import '../../capture/presentation/capture_sheet.dart';
+import '../../capture/presentation/voice_capture_sheet.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 
@@ -62,10 +63,22 @@ class TodayScreen extends ConsumerWidget {
           error: (e, _) => Center(child: Text('Error: $e')),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showCaptureSheet(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Nabbo it'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'voice',
+            onPressed: () => showVoiceCaptureSheet(context),
+            child: const Icon(Icons.mic_rounded),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton.extended(
+            heroTag: 'text',
+            onPressed: () => showCaptureSheet(context),
+            icon: const Icon(Icons.add),
+            label: const Text('Nabbo it'),
+          ),
+        ],
       ),
     );
   }
