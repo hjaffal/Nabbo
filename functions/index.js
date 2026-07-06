@@ -10,9 +10,7 @@ const PROJECT_ID = 'nabbo-app-4d98a';
 const LOCATION = 'europe-west1';
 
 const genai = new GoogleGenAI({
-  vertexai: true,
-  project: PROJECT_ID,
-  location: LOCATION,
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 /**
@@ -20,7 +18,10 @@ const genai = new GoogleGenAI({
  * Runs the AI extraction pipeline to produce Extracted Items.
  */
 exports.extractSourceMessage = onDocumentCreated(
-  'households/{householdId}/sourceMessages/{messageId}',
+  {
+    document: 'households/{householdId}/sourceMessages/{messageId}',
+    secrets: ['GEMINI_API_KEY'],
+  },
   async (event) => {
     const snapshot = event.data;
     if (!snapshot) return;
