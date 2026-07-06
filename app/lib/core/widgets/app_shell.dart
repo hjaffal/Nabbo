@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -36,93 +38,13 @@ class _AppShellState extends ConsumerState<AppShell> {
     super.dispose();
   }
 
-  void _showCaptureOptions() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Nabbo it',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'How do you want to capture?',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-              ),
-              const SizedBox(height: 20),
-              _CaptureOption(
-                icon: Icons.edit_note_rounded,
-                label: 'Type a note',
-                subtitle: 'Quick text reminder',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  showCaptureSheet(context);
-                },
-              ),
-              const SizedBox(height: 10),
-              _CaptureOption(
-                icon: Icons.mic_rounded,
-                label: 'Voice note',
-                subtitle: 'Speak a reminder',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  showVoiceCaptureSheet(context);
-                },
-              ),
-              const SizedBox(height: 10),
-              _CaptureOption(
-                icon: Icons.image_rounded,
-                label: 'Photo / Screenshot',
-                subtitle: 'Capture from camera or gallery',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  showImageCaptureSheet(context);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final showFab = widget.navigationShell.currentIndex == 0;
 
     return Scaffold(
       body: widget.navigationShell,
-      floatingActionButton: showFab
-          ? FloatingActionButton.extended(
-              onPressed: _showCaptureOptions,
-              icon: const Icon(Icons.add),
-              label: const Text('Nabbo it'),
-            )
-          : null,
+      floatingActionButton: showFab ? const _AnimatedCaptureFab() : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: widget.navigationShell.currentIndex,
         onDestinationSelected: (index) {
@@ -153,62 +75,208 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-class _CaptureOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final VoidCallback onTap;
+/// Animated expandable FAB with speed-dial mini buttons
+class _AnimatedCaptureFab extends StatefulWidget {
+  const _AnimatedCaptureFab();
 
-  const _CaptureOption({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.onTap,
-  });
+  @override
+  State<_AnimatedCaptureFab> createState() => _AnimatedCaptureFabState();
+}
+
+class _AnimatedCaptureFabState extends State<_AnimatedCaptureFab>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  bool _isOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 250),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() {
+      _isOpen = !_isOpen;
+      if (_isOpen) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
+
+  void _close() {
+    setState(() {
+      _isOpen = false;
+      _controller.reverse();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 22),
+    return SizedBox(
+      width: 200,
+      height: 280,
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          // Scrim (tap to close)
+          if (_isOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _close,
+                behavior: HitTestBehavior.translucent,
+                child: const SizedBox.expand(),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: Theme.of(context).textTheme.titleSmall),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: AppColors.textMuted),
-            ],
+            ),
+
+          // Mini FAB 3: Image (top)
+          _buildMiniFab(
+            index: 2,
+            icon: Icons.image_rounded,
+            label: 'Photo',
+            color: AppColors.softGreen,
+            bgColor: AppColors.greenLight,
+            onTap: () {
+              _close();
+              showImageCaptureSheet(context);
+            },
           ),
-        ),
+
+          // Mini FAB 2: Voice (middle)
+          _buildMiniFab(
+            index: 1,
+            icon: Icons.mic_rounded,
+            label: 'Voice',
+            color: AppColors.softBlue,
+            bgColor: AppColors.blueLight,
+            onTap: () {
+              _close();
+              showVoiceCaptureSheet(context);
+            },
+          ),
+
+          // Mini FAB 1: Text (closest)
+          _buildMiniFab(
+            index: 0,
+            icon: Icons.edit_note_rounded,
+            label: 'Text',
+            color: AppColors.warmYellow,
+            bgColor: AppColors.yellowLight,
+            onTap: () {
+              _close();
+              showCaptureSheet(context);
+            },
+          ),
+
+          // Main FAB
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: FloatingActionButton.extended(
+              heroTag: 'nabbo_fab',
+              onPressed: _toggle,
+              icon: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _controller.value * math.pi / 4,
+                    child: const Icon(Icons.add),
+                  );
+                },
+              ),
+              label: const Text('Nabbo it'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniFab({
+    required int index,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color bgColor,
+    required VoidCallback onTap,
+  }) {
+    final offset = 64.0 + (index * 56.0); // spacing between mini fabs
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final scale = CurvedAnimation(
+          parent: _controller,
+          curve: Interval(index * 0.15, 0.6 + index * 0.15, curve: Curves.easeOut),
+        ).value;
+
+        return Positioned(
+          bottom: offset * scale,
+          right: 4,
+          child: Opacity(
+            opacity: scale,
+            child: Transform.scale(
+              scale: scale,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Label chip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Mini FAB button
+          Material(
+            color: bgColor,
+            shape: const CircleBorder(),
+            elevation: 3,
+            shadowColor: color.withValues(alpha: 0.3),
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                child: Icon(icon, color: color, size: 22),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
