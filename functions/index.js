@@ -49,8 +49,30 @@ exports.extractSourceMessage = onDocumentCreated(
         role: doc.data().role,
       }));
 
-      // Build the extraction prompt
-      const prompt = buildExtractionPrompt(message.originalContent, familyMembers);
+      // Get approved events for context (last 30 days + upcoming 14 days)
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const eventsSnapshot = await db
+        .collection('households')
+        .doc(householdId)
+        .collection('extractedItems')
+        .where('reviewStatus', 'in', ['approved', 'editedAndApproved'])
+        .orderBy('createdAt', 'desc')
+        .limit(30)
+        .get();
+
+      const approvedItems = eventsSnapshot.docs.map(doc => {
+        const d = doc.data();
+        return {
+          type: d.itemType,
+          summary: d.operationalSummary,
+          member: d.affectedMemberName,
+          fields: (d.extractedFields || []).map(f => `${f.name}: ${f.value}`).join(', '),
+        };
+      });
+
+      // Build the extraction prompt with full context
+      const prompt = buildExtractionPrompt(message.originalContent, familyMembers, approvedItems);
 
       // Call Gemini
       const result = await genai.models.generateContent({
@@ -129,14 +151,21 @@ exports.extractSourceMessage = onDocumentCreated(
 /**
  * Build the extraction prompt for Gemini
  */
-function buildExtractionPrompt(content, familyMembers) {
+function buildExtractionPrompt(content, familyMembers, approvedItems = []) {
   const membersContext = familyMembers.length > 0
     ? `Family members: ${familyMembers.map(m => `${m.name} (${m.role})`).join(', ')}`
     : 'No family members registered yet.';
 
+  let householdKnowledge = '';
+  if (approvedItems.length > 0) {
+    householdKnowledge = `\n\nWhat the household already has planned/known:\n${approvedItems.map(item =>
+      `- [${item.type}] ${item.summary}${item.member ? ` (${item.member})` : ''}${item.fields ? ` — ${item.fields}` : ''}`
+    ).join('\n')}`;
+  }
+
   return `You are Nabbo, a family logistics AI assistant. Your job is to extract operational meaning from messy family messages — not just summarize them.
 
-${membersContext}
+${membersContext}${householdKnowledge}
 
 Analyze the following input and extract ALL actionable household items. For each item, determine:
 - Who is affected (match to a family member if possible)
