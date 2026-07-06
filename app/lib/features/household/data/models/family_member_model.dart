@@ -32,6 +32,7 @@ abstract class FamilyMemberModel with _$FamilyMemberModel {
     required MemberRole role,
     AgeGroup? ageGroup,
     String? color,
+    String? photoUrl,
     @Default([]) List<String> defaultResponsibilities,
     @TimestampConverter() DateTime? createdAt,
   }) = _FamilyMemberModel;

@@ -226,3 +226,178 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
     );
   }
+
+  Widget _buildLogo() {
+    return Center(
+      child: AnimatedBuilder(
+        animation: _glowController,
+        builder: (context, child) {
+          final glowValue = _glowController.value;
+          return Container(
+            width: 140,
+            height: 140,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  AppColors.limeAccent.withValues(alpha: 0.15 + glowValue * 0.1),
+                  AppColors.skyBlueCard.withValues(alpha: 0.08 + glowValue * 0.05),
+                  Colors.transparent,
+                ],
+                stops: const [0.3, 0.7, 1.0],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.limeAccent.withValues(alpha: 0.1 + glowValue * 0.08),
+                  blurRadius: 40 + glowValue * 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.limeAccent.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(
+                    color: AppColors.limeAccent.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.all_inbox_rounded,
+                  size: 40,
+                  color: AppColors.limeAccent,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  List<Widget> _buildFloatingShapes() {
+    return [
+      _AnimatedShape(
+        controller: _floatController,
+        top: 60,
+        left: -30,
+        size: 100,
+        color: AppColors.lavenderCard.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+        phaseOffset: 0.0,
+        floatDistance: 12,
+      ),
+      _AnimatedShape(
+        controller: _floatController,
+        top: 130,
+        right: -20,
+        size: 80,
+        color: AppColors.skyBlueCard.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+        phaseOffset: 0.3,
+        floatDistance: 8,
+      ),
+      _AnimatedShape(
+        controller: _floatController,
+        bottom: 200,
+        left: 30,
+        size: 60,
+        borderRadius: 18,
+        color: AppColors.mintCard.withValues(alpha: 0.10),
+        phaseOffset: 0.6,
+        floatDistance: 10,
+      ),
+      _AnimatedShape(
+        controller: _floatController,
+        bottom: 300,
+        right: 40,
+        size: 50,
+        color: AppColors.peachCard.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+        phaseOffset: 0.15,
+        floatDistance: 14,
+      ),
+      _AnimatedShape(
+        controller: _floatController,
+        top: 260,
+        left: 50,
+        size: 40,
+        borderRadius: 12,
+        color: AppColors.blushPink.withValues(alpha: 0.10),
+        phaseOffset: 0.45,
+        floatDistance: 6,
+      ),
+      _AnimatedShape(
+        controller: _floatController,
+        top: 400,
+        right: 60,
+        size: 35,
+        borderRadius: 10,
+        color: AppColors.limeAccent.withValues(alpha: 0.08),
+        phaseOffset: 0.75,
+        floatDistance: 9,
+      ),
+    ];
+  }
+}
+
+/// An animated floating decorative shape with phase offset for variety.
+class _AnimatedShape extends StatelessWidget {
+  final AnimationController controller;
+  final double? top, bottom, left, right;
+  final double size;
+  final Color color;
+  final BoxShape? shape;
+  final double? borderRadius;
+  final double phaseOffset;
+  final double floatDistance;
+
+  const _AnimatedShape({
+    required this.controller,
+    this.top,
+    this.bottom,
+    this.left,
+    this.right,
+    required this.size,
+    required this.color,
+    this.shape,
+    this.borderRadius,
+    required this.phaseOffset,
+    required this.floatDistance,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        // Create offset phase for each shape
+        final t = (controller.value + phaseOffset) % 1.0;
+        final sinValue = math.sin(t * math.pi * 2);
+        final cosValue = math.cos(t * math.pi * 2 * 0.7);
+
+        return Positioned(
+          top: top != null ? top! + sinValue * floatDistance : null,
+          bottom: bottom != null ? bottom! + cosValue * floatDistance : null,
+          left: left != null ? left! + cosValue * (floatDistance * 0.5) : null,
+          right: right != null ? right! + sinValue * (floatDistance * 0.5) : null,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: color,
+              shape: shape ?? BoxShape.rectangle,
+              borderRadius: shape == null || shape == BoxShape.rectangle
+                  ? BorderRadius.circular(borderRadius ?? size / 4)
+                  : null,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

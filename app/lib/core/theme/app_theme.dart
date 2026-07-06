@@ -10,6 +10,13 @@ class AppTheme {
         useMaterial3: true,
         brightness: Brightness.light,
         scaffoldBackgroundColor: AppColors.iceBackground,
+        // Smooth page transitions
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: <TargetPlatform, PageTransitionsBuilder>{
+            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
+          },
+        ),
         colorScheme: const ColorScheme(
           brightness: Brightness.light,
           primary: AppColors.deepTeal,

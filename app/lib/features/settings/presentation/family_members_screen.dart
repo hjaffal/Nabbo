@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../household/data/models/family_member_model.dart';
 import '../../household/data/models/household_model.dart';
@@ -71,23 +75,15 @@ class _MembersList extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.people_outline,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                ),
+                Icon(Icons.people_outline, size: 64,
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
                 const SizedBox(height: 16),
-                Text(
-                  'No family members yet',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('No family members yet',
+                    style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                Text(
-                  'Add children and other household members.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
+                Text('Add children and other household members.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
             ),
           );
@@ -100,7 +96,7 @@ class _MembersList extends ConsumerWidget {
             final member = members[index];
             return _MemberCard(
               member: member,
-              onEdit: () => _showEditMemberDialog(context, ref, member),
+              onEdit: () => _showEditDialog(context, ref, member),
               onDelete: () => _confirmDelete(context, ref, member),
             );
           },
@@ -109,26 +105,21 @@ class _MembersList extends ConsumerWidget {
     );
   }
 
-  void _showEditMemberDialog(
-      BuildContext context, WidgetRef ref, FamilyMemberModel member) {
+  void _showEditDialog(BuildContext context, WidgetRef ref, FamilyMemberModel member) {
     showDialog(
       context: context,
       builder: (context) => _EditMemberDialog(ref: ref, member: member),
     );
   }
 
-  void _confirmDelete(
-      BuildContext context, WidgetRef ref, FamilyMemberModel member) {
+  void _confirmDelete(BuildContext context, WidgetRef ref, FamilyMemberModel member) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove member?'),
         content: Text('Remove ${member.name} from the household?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               final repo = ref.read(householdRepositoryProvider);
@@ -136,8 +127,7 @@ class _MembersList extends ConsumerWidget {
               if (context.mounted) Navigator.pop(context);
             },
             style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
+                backgroundColor: Theme.of(context).colorScheme.error),
             child: const Text('Remove'),
           ),
         ],
@@ -151,11 +141,7 @@ class _MemberCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const _MemberCard({
-    required this.member,
-    required this.onEdit,
-    required this.onDelete,
-  });
+  const _MemberCard({required this.member, required this.onEdit, required this.onDelete});
 
   String get _roleLabel => switch (member.role) {
         MemberRole.primaryParent => 'Primary parent',
@@ -179,16 +165,13 @@ class _MemberCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _roleColor(context).withValues(alpha: 0.15),
-          child: Text(
-            member.name[0].toUpperCase(),
-            style: TextStyle(
-              color: _roleColor(context),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
+        leading: member.photoUrl != null
+            ? CircleAvatar(backgroundImage: NetworkImage(member.photoUrl!))
+            : CircleAvatar(
+                backgroundColor: _roleColor(context).withValues(alpha: 0.15),
+                child: Text(member.name[0].toUpperCase(),
+                    style: TextStyle(color: _roleColor(context), fontWeight: FontWeight.bold)),
+              ),
         title: Text(member.name),
         subtitle: Text(_roleLabel),
         trailing: PopupMenuButton<String>(
@@ -200,10 +183,7 @@ class _MemberCard extends StatelessWidget {
             const PopupMenuItem(value: 'edit', child: Text('Edit')),
             PopupMenuItem(
               value: 'delete',
-              child: Text(
-                'Remove',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
+              child: Text('Remove', style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
           ],
         ),
@@ -212,9 +192,10 @@ class _MemberCard extends StatelessWidget {
   }
 }
 
+// --- Add Member Dialog ---
+
 class _AddMemberDialog extends ConsumerStatefulWidget {
   final WidgetRef ref;
-
   const _AddMemberDialog({required this.ref});
 
   @override
@@ -235,31 +216,19 @@ class _AddMemberDialogState extends ConsumerState<_AddMemberDialog> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
-
     setState(() => _isSaving = true);
-
     try {
       final userId = FirebaseAuth.instance.currentUser!.uid;
       final repo = widget.ref.read(householdRepositoryProvider);
       final household = await repo.getHouseholdByUserId(userId);
-
       if (household == null) throw Exception('Household not found');
-
       await repo.addFamilyMember(FamilyMemberModel(
-        id: '',
-        householdId: household.id,
-        name: name,
-        role: _role,
+        id: '', householdId: household.id, name: name, role: _role,
         ageGroup: _role == MemberRole.child ? AgeGroup.child : AgeGroup.adult,
       ));
-
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -272,40 +241,23 @@ class _AddMemberDialogState extends ConsumerState<_AddMemberDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _nameController,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Name',
-              hintText: 'e.g. Adam',
-            ),
-          ),
+          TextField(controller: _nameController, autofocus: true,
+              decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Adam')),
           const SizedBox(height: 16),
           DropdownButtonFormField<MemberRole>(
             value: _role,
             decoration: const InputDecoration(labelText: 'Role'),
-            items: MemberRole.values
-                .map((r) => DropdownMenuItem(
-                      value: r,
-                      child: Text(_roleName(r)),
-                    ))
-                .toList(),
+            items: MemberRole.values.map((r) => DropdownMenuItem(value: r, child: Text(_roleName(r)))).toList(),
             onChanged: (v) => setState(() => _role = v!),
           ),
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton(
           onPressed: _isSaving ? null : _save,
           child: _isSaving
-              ? const SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('Add'),
         ),
       ],
@@ -323,10 +275,11 @@ class _AddMemberDialogState extends ConsumerState<_AddMemberDialog> {
       };
 }
 
+// --- Edit Member Dialog with Photo Upload ---
+
 class _EditMemberDialog extends ConsumerStatefulWidget {
   final WidgetRef ref;
   final FamilyMemberModel member;
-
   const _EditMemberDialog({required this.ref, required this.member});
 
   @override
@@ -336,13 +289,16 @@ class _EditMemberDialog extends ConsumerStatefulWidget {
 class _EditMemberDialogState extends ConsumerState<_EditMemberDialog> {
   late final TextEditingController _nameController;
   late MemberRole _role;
+  String? _photoUrl;
   bool _isSaving = false;
+  bool _isUploading = false;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.member.name);
     _role = widget.member.role;
+    _photoUrl = widget.member.photoUrl;
   }
 
   @override
@@ -351,26 +307,34 @@ class _EditMemberDialogState extends ConsumerState<_EditMemberDialog> {
     super.dispose();
   }
 
+  Future<void> _pickPhoto() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 512);
+    if (image == null) return;
+    setState(() => _isUploading = true);
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${widget.member.id}.jpg';
+      final storagePath = 'households/${widget.member.householdId}/members/$fileName';
+      final storageRef = FirebaseStorage.instance.ref(storagePath);
+      await storageRef.putFile(File(image.path));
+      final url = await storageRef.getDownloadURL();
+      setState(() { _photoUrl = url; _isUploading = false; });
+    } catch (e) {
+      setState(() => _isUploading = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+    }
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
-
     setState(() => _isSaving = true);
-
     try {
       final repo = widget.ref.read(householdRepositoryProvider);
-      await repo.updateFamilyMember(widget.member.copyWith(
-        name: name,
-        role: _role,
-      ));
-
+      await repo.updateFamilyMember(widget.member.copyWith(name: name, role: _role, photoUrl: _photoUrl));
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -383,36 +347,51 @@ class _EditMemberDialogState extends ConsumerState<_EditMemberDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Name'),
+          // Photo picker
+          GestureDetector(
+            onTap: _isUploading ? null : _pickPhoto,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
+                  child: _photoUrl == null
+                      ? Text(widget.member.name[0].toUpperCase(), style: const TextStyle(fontSize: 28))
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0, right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: _isUploading
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 16),
+          TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name')),
           const SizedBox(height: 16),
           DropdownButtonFormField<MemberRole>(
             value: _role,
             decoration: const InputDecoration(labelText: 'Role'),
-            items: MemberRole.values
-                .map((r) => DropdownMenuItem(
-                      value: r,
-                      child: Text(_roleName(r)),
-                    ))
-                .toList(),
+            items: MemberRole.values.map((r) => DropdownMenuItem(value: r, child: Text(_roleName(r)))).toList(),
             onChanged: (v) => setState(() => _role = v!),
           ),
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton(
           onPressed: _isSaving ? null : _save,
           child: _isSaving
-              ? const SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('Save'),
         ),
       ],
