@@ -64,29 +64,6 @@ class TodayScreen extends ConsumerWidget {
           error: (e, _) => Center(child: Text('Error: $e')),
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'image',
-            onPressed: () => showImageCaptureSheet(context),
-            child: const Icon(Icons.image_rounded),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton.small(
-            heroTag: 'voice',
-            onPressed: () => showVoiceCaptureSheet(context),
-            child: const Icon(Icons.mic_rounded),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton.extended(
-            heroTag: 'text',
-            onPressed: () => showCaptureSheet(context),
-            icon: const Icon(Icons.add),
-            label: const Text('Nabbo it'),
-          ),
-        ],
-      ),
     );
   }
 
