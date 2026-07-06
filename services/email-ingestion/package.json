@@ -1,7 +1,7 @@
 {
   "name": "nabbo-email-ingestion",
   "version": "1.0.0",
-  "description": "Cloud Run service to receive forwarded emails via Resend and store as Nabbo Source Messages",
+  "description": "Cloud Run service to receive forwarded emails and store as Nabbo Source Messages",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -10,6 +10,7 @@
   "dependencies": {
     "express": "4.21.2",
     "multer": "1.4.5-lts.1",
-    "firebase-admin": "13.0.2"
+    "firebase-admin": "13.0.2",
+    "mailparser": "3.7.2"
   }
 }
