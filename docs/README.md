@@ -8,6 +8,7 @@ Nabbo is the command center for modern family life. It captures messy household 
 
 ## Table of Contents
 
+### Product
 1. [Product Strategy](./01-product-strategy.md)
 2. [Product Requirements (v1)](./02-product-requirements.md)
 3. [Core Product Loop](./03-product-loop.md)
@@ -17,6 +18,10 @@ Nabbo is the command center for modern family life. It captures messy household 
 7. [Review Card Spec](./07-review-card.md)
 8. [Today Command Center Spec](./08-today-command-center.md)
 9. [Notification Strategy](./09-notification-strategy.md)
+
+### Technical
+10. [Technical Architecture](./10-technical-architecture.md)
+11. [Implementation Plan](./11-implementation-plan.md)
 
 ---
 
