@@ -9,6 +9,7 @@ import '../../household/data/repositories/household_repository.dart';
 import 'edit_household_screen.dart';
 import 'family_members_screen.dart';
 import 'notification_settings_screen.dart';
+import 'delete_account_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
   final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -129,6 +130,20 @@ class SettingsScreen extends ConsumerWidget {
               await FirebaseAuth.instance.signOut();
               if (context.mounted) context.go('/login');
             },
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.delete_forever,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(
+              'Delete account',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DeleteAccountScreen()),
+            ),
           ),
         ],
       ),

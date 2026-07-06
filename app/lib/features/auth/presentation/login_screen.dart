@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../household/data/repositories/household_repository.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -195,6 +196,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               : Text(_isSignUp ? 'Create Account' : 'Sign In'),
                         ),
                         const SizedBox(height: 12),
+
+                        // Forgot password
+                        if (!_isSignUp)
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen(),
+                              ),
+                            ),
+                            child: const Text('Forgot password?'),
+                          ),
 
                         TextButton(
                           onPressed: () {
