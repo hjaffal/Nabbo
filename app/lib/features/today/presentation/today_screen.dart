@@ -35,102 +35,120 @@ class TodayScreen extends ConsumerWidget {
   }
 }
 
-class _TodayContent extends StatelessWidget {
+class _TodayContent extends StatefulWidget {
   final String householdId;
   const _TodayContent({required this.householdId});
 
   @override
+  State<_TodayContent> createState() => _TodayContentState();
+}
+
+class _TodayContentState extends State<_TodayContent> {
+  late DateTime _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = DateTime.now();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final db = FirebaseFirestore.instance;
-    final householdRef = db.collection('households').doc(householdId);
+    final householdRef = db.collection('households').doc(widget.householdId);
 
-    // Get today's date range
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
+    final startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
-    final userName = FirebaseAuth.instance.currentUser?.displayName ?? 'there';
 
-    return StreamBuilder<List<_TodayData>>(
-      stream: _buildTodayStream(householdRef, startOfDay, endOfDay),
-      builder: (context, snapshot) {
-        final data = snapshot.data;
-
-        return CustomScrollView(
-          slivers: [
-            // App bar area with greeting
-            SliverToBoxAdapter(
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _greeting(),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'What needs attention?',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                    ],
+    return CustomScrollView(
+      slivers: [
+        // App bar area with greeting
+        SliverToBoxAdapter(
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _greeting(),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'What needs attention?',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                ],
               ),
             ),
+          ),
+        ),
 
-            // Status card
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                child: _StatusCard(data: data),
-              ),
+        // Date selector card (tappable)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: GestureDetector(
+              onTap: _pickDate,
+              child: _StatusCard(selectedDate: _selectedDate),
             ),
+          ),
+        ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
+        const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
 
-            // Events section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                child: _EventsSection(householdRef: householdRef, startOfDay: startOfDay, endOfDay: endOfDay),
-              ),
-            ),
+        // Events section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: _EventsSection(householdRef: householdRef),
+          ),
+        ),
 
-            // Tasks section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                child: _TasksSection(householdRef: householdRef),
-              ),
-            ),
+        // Tasks section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: _TasksSection(householdRef: householdRef),
+          ),
+        ),
 
-            // Required items section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                child: _RequiredItemsSection(householdRef: householdRef),
-              ),
-            ),
+        // Required items section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: _RequiredItemsSection(householdRef: householdRef),
+          ),
+        ),
 
-            // Payments & forms section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                child: _PaymentsSection(householdRef: householdRef),
-              ),
-            ),
+        // Payments section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: _PaymentsSection(householdRef: householdRef),
+          ),
+        ),
 
-            // Bottom padding
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
-        );
-      },
+        // Bottom padding
+        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      ],
     );
   }
 
@@ -140,20 +158,18 @@ class _TodayContent extends StatelessWidget {
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   }
-
-  Stream<List<_TodayData>> _buildTodayStream(
-      DocumentReference householdRef, DateTime startOfDay, DateTime endOfDay) {
-    // Simple stream that emits empty list - sections handle their own queries
-    return Stream.value([]);
-  }
 }
 
 class _StatusCard extends StatelessWidget {
-  final List<_TodayData>? data;
-  const _StatusCard({this.data});
+  final DateTime selectedDate;
+  const _StatusCard({required this.selectedDate});
 
   @override
   Widget build(BuildContext context) {
+    final isToday = selectedDate.year == DateTime.now().year &&
+        selectedDate.month == DateTime.now().month &&
+        selectedDate.day == DateTime.now().day;
+
     return SoftCard(
       color: AppColors.primaryLight,
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -165,7 +181,7 @@ class _StatusCard extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             ),
-            child: const Icon(Icons.today_rounded, color: AppColors.primary, size: 24),
+            child: const Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 24),
           ),
           const SizedBox(width: AppSpacing.lg),
           Expanded(
@@ -173,7 +189,7 @@ class _StatusCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _todayLabel(),
+                  isToday ? 'Today' : _dayLabel(),
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryDark),
                 ),
                 const SizedBox(height: 2),
@@ -184,30 +200,28 @@ class _StatusCard extends StatelessWidget {
               ],
             ),
           ),
+          Icon(Icons.arrow_drop_down_rounded, color: AppColors.primary, size: 28),
         ],
       ),
     );
   }
 
-  String _todayLabel() {
+  String _dayLabel() {
     final weekday = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    return weekday[DateTime.now().weekday - 1];
+    return weekday[selectedDate.weekday - 1];
   }
 
   String _dateString() {
-    final now = DateTime.now();
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${now.day} ${months[now.month - 1]} ${now.year}';
+    return '${selectedDate.day} ${months[selectedDate.month - 1]} ${selectedDate.year}';
   }
 }
 
 // --- Events Section ---
 class _EventsSection extends StatelessWidget {
   final DocumentReference householdRef;
-  final DateTime startOfDay;
-  final DateTime endOfDay;
 
-  const _EventsSection({required this.householdRef, required this.startOfDay, required this.endOfDay});
+  const _EventsSection({required this.householdRef});
 
   @override
   Widget build(BuildContext context) {
@@ -396,8 +410,6 @@ class _PaymentsSection extends StatelessWidget {
     );
   }
 }
-
-class _TodayData {}
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState();

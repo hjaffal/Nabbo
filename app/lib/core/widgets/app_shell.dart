@@ -182,19 +182,18 @@ class _AnimatedCaptureFabState extends State<_AnimatedCaptureFab>
           Positioned(
             bottom: 0,
             right: 0,
-            child: FloatingActionButton.extended(
+            child: FloatingActionButton(
               heroTag: 'nabbo_fab',
               onPressed: _toggle,
-              icon: AnimatedBuilder(
+              child: AnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
                   return Transform.rotate(
                     angle: _controller.value * math.pi / 4,
-                    child: const Icon(Icons.add),
+                    child: const Icon(Icons.add, size: 28),
                   );
                 },
               ),
-              label: const Text('Nabbo it'),
             ),
           ),
         ],
