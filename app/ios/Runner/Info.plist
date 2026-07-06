@@ -53,6 +53,8 @@
 	<string>Nabbo uses speech recognition to transcribe your voice notes into family actions.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Nabbo needs microphone access to record voice notes for family logistics.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Nabbo needs photo access to process shared images and screenshots.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
