@@ -213,9 +213,7 @@ class _EventsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: householdRef.collection('events')
-          .where('startDateTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-          .where('startDateTime', isLessThan: Timestamp.fromDate(endOfDay))
-          .orderBy('startDateTime')
+          .where('status', isEqualTo: 'confirmed')
           .snapshots(),
       builder: (context, snapshot) {
         final docs = snapshot.data?.docs ?? [];
@@ -224,7 +222,7 @@ class _EventsSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(title: 'Events today'),
+            const SectionHeader(title: 'Events'),
             ...docs.map((doc) {
               final d = doc.data() as Map<String, dynamic>;
               final time = (d['startDateTime'] as Timestamp?)?.toDate();

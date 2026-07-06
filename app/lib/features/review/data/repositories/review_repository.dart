@@ -23,10 +23,15 @@ class ReviewRepository {
         .where('reviewStatus', isEqualTo: 'pendingReview')
         .snapshots()
         .map((snapshot) {
-          final items = snapshot.docs
-              .map((doc) => ExtractedItemModel.fromFirestore(doc))
-              .toList();
-          // Sort client-side to avoid needing composite index
+          final items = <ExtractedItemModel>[];
+          for (final doc in snapshot.docs) {
+            try {
+              items.add(ExtractedItemModel.fromFirestore(doc));
+            } catch (e) {
+              // Skip documents that fail to parse
+              print('Failed to parse extracted item ${doc.id}: $e');
+            }
+          }
           items.sort((a, b) => (b.createdAt ?? DateTime(2000))
               .compareTo(a.createdAt ?? DateTime(2000)));
           return items;

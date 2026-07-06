@@ -75,7 +75,8 @@ class ApprovalService {
         ExtractedItemType.requiredItem => 'requiredItems',
         ExtractedItemType.change => 'changes',
         ExtractedItemType.risk => 'risks',
-        _ => null,
+        ExtractedItemType.locationUpdate => 'events', // treat location updates as event updates
+        ExtractedItemType.routineSuggestion => 'tasks', // treat routine suggestions as tasks
       };
 
   Map<String, dynamic>? _buildCommittedObject(

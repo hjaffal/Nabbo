@@ -53,6 +53,10 @@ class _ReviewList extends ConsumerWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
         final items = snapshot.data ?? [];
 
         if (items.isEmpty) return const _EmptyState();
