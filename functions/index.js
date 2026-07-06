@@ -54,7 +54,7 @@ exports.extractSourceMessage = onDocumentCreated(
 
       // Call Gemini
       const result = await genai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
       });
       const text = result.text;
