@@ -109,29 +109,37 @@ class AppTheme {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppColors.cardBackground,
+          fillColor: AppColors.surfaceSoft,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-            borderSide: const BorderSide(color: AppColors.softCoral),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.softCoral, width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.softCoral, width: 1.5),
           ),
           hintStyle:
-              const TextStyle(color: AppColors.textMuted, fontSize: 14),
+              const TextStyle(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.w400),
           labelStyle:
-              const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              const TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+          floatingLabelStyle:
+              const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w600),
+          prefixIconColor: AppColors.textMuted,
+          suffixIconColor: AppColors.textMuted,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../household/data/repositories/household_repository.dart';
 import '../data/repositories/capture_repository.dart';
 
@@ -113,21 +114,35 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
               maxLines: 4,
               minLines: 2,
               textCapitalization: TextCapitalization.sentences,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.5,
+                color: AppColors.textBlack,
+              ),
               decoration: InputDecoration(
                 hintText:
                     'e.g. "Adam has football Friday at 18:30, bring blue jersey"',
+                hintMaxLines: 2,
                 hintStyle: TextStyle(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurfaceVariant
-                      .withValues(alpha: 0.6),
+                  color: AppColors.textMuted,
+                  fontSize: 14,
+                  height: 1.5,
                 ),
                 filled: true,
-                fillColor:
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor: AppColors.surfaceSoft,
+                contentPadding: const EdgeInsets.all(18),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 1.5),
                 ),
               ),
               onSubmitted: (_) => _submit(),
