@@ -7,6 +7,7 @@ import '../../features/onboarding/presentation/household_setup_screen.dart';
 import '../../features/onboarding/presentation/add_children_screen.dart';
 import '../../features/onboarding/presentation/add_people_screen.dart';
 import '../../features/onboarding/presentation/email_alias_screen.dart';
+import '../../features/onboarding/presentation/sharing_explanation_screen.dart';
 import '../../features/onboarding/presentation/first_capture_screen.dart';
 import '../widgets/app_shell.dart';
 import '../../features/today/presentation/today_screen.dart';
@@ -43,6 +44,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding/email',
         builder: (context, state) => const EmailAliasScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/sharing',
+        builder: (context, state) => const SharingExplanationScreen(),
       ),
       GoRoute(
         path: '/onboarding/first-capture',

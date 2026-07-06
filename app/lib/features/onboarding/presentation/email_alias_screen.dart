@@ -127,7 +127,7 @@ class _EmailAliasScreenState extends ConsumerState<EmailAliasScreen> {
             const Spacer(),
 
             FilledButton(
-              onPressed: () => context.go('/onboarding/first-capture'),
+              onPressed: () => context.go('/onboarding/sharing'),
               child: const Text('Continue'),
             ),
           ],
