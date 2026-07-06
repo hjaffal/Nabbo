@@ -20,12 +20,17 @@ class ReviewRepository {
   /// Watch all pending review items, sorted by urgency
   Stream<List<ExtractedItemModel>> watchPendingItems(String householdId) {
     return _extractedItemsRef(householdId)
-        .where('reviewStatus', isEqualTo: ReviewStatus.pendingReview.name)
-        .orderBy('createdAt', descending: true)
+        .where('reviewStatus', isEqualTo: 'pendingReview')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ExtractedItemModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) {
+          final items = snapshot.docs
+              .map((doc) => ExtractedItemModel.fromFirestore(doc))
+              .toList();
+          // Sort client-side to avoid needing composite index
+          items.sort((a, b) => (b.createdAt ?? DateTime(2000))
+              .compareTo(a.createdAt ?? DateTime(2000)));
+          return items;
+        });
   }
 
   /// Get a single extracted item
