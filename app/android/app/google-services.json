@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "946615442462",
+    "project_id": "nabbo-app-4d98a",
+    "storage_bucket": "nabbo-app-4d98a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:946615442462:android:89728e76321837ba4ba20f",
+        "android_client_info": {
+          "package_name": "com.nabbo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxqCzZIvPzxVrfyvA5lU_PYYqpZqKupHo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
