@@ -1,10 +1,124 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/animations/animations.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
+
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _entranceController;
+  late final AnimationController _floatController;
+  late final AnimationController _glowController;
+
+  // Staggered animations
+  late final Animation<double> _logoOpacity;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _headlineOpacity;
+  late final Animation<Offset> _headlineSlide;
+  late final Animation<double> _subtextOpacity;
+  late final Animation<Offset> _subtextSlide;
+  late final Animation<double> _buttonOpacity;
+  late final Animation<Offset> _buttonSlide;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Main entrance timeline
+    _entranceController = AnimationController(
+      duration: const Duration(milliseconds: 1800),
+      vsync: this,
+    );
+
+    // Floating shapes continuous animation
+    _floatController = AnimationController(
+      duration: const Duration(seconds: 6),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    // Glow pulse on the logo
+    _glowController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    // Logo: 0.0 - 0.35
+    _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.35, curve: Curves.easeOut),
+      ),
+    );
+    _logoScale = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack),
+      ),
+    );
+
+    // Headline: 0.2 - 0.55
+    _headlineOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.2, 0.55, curve: Curves.easeOut),
+      ),
+    );
+    _headlineSlide = Tween<Offset>(
+      begin: const Offset(0, 30),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.2, 0.55, curve: Curves.easeOutCubic),
+    ));
+
+    // Subtext: 0.35 - 0.65
+    _subtextOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.35, 0.65, curve: Curves.easeOut),
+      ),
+    );
+    _subtextSlide = Tween<Offset>(
+      begin: const Offset(0, 24),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.35, 0.65, curve: Curves.easeOutCubic),
+    ));
+
+    // Button: 0.55 - 0.85
+    _buttonOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.55, 0.85, curve: Curves.easeOut),
+      ),
+    );
+    _buttonSlide = Tween<Offset>(
+      begin: const Offset(0, 20),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.55, 0.85, curve: Curves.easeOutCubic),
+    ));
+
+    _entranceController.forward();
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    _floatController.dispose();
+    _glowController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,67 +127,8 @@ class WelcomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Stack(
           children: [
-            // Floating colorful shapes in background
-            Positioned(
-              top: 60,
-              left: -30,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: AppColors.lavenderCard.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 120,
-              right: -20,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.skyBlueCard.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 200,
-              left: 30,
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: AppColors.mintCard.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 280,
-              right: 40,
-              child: Container(
-                width: 45,
-                height: 45,
-                decoration: BoxDecoration(
-                  color: AppColors.peachCard.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 250,
-              left: 50,
-              child: Container(
-                width: 35,
-                height: 35,
-                decoration: BoxDecoration(
-                  color: AppColors.blushPink.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
+            // Animated floating background shapes
+            ..._buildFloatingShapes(),
 
             // Main content
             Padding(
@@ -83,37 +138,14 @@ class WelcomeScreen extends StatelessWidget {
                 children: [
                   const Spacer(flex: 2),
 
-                  // Abstract basket icon with colorful ring
-                  Center(
-                    child: Container(
-                      width: 130,
-                      height: 130,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.skyBlueCard.withValues(alpha: 0.3),
-                            AppColors.lavenderCard.withValues(alpha: 0.2),
-                            AppColors.mintCard.withValues(alpha: 0.25),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: Center(
-                        child: Container(
-                          width: 76,
-                          height: 76,
-                          decoration: BoxDecoration(
-                            color: AppColors.limeAccent.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: const Icon(
-                            Icons.all_inbox_rounded,
-                            size: 38,
-                            color: AppColors.limeAccent,
-                          ),
-                        ),
+                  // Animated logo with glow
+                  AnimatedBuilder(
+                    animation: Listenable.merge([_entranceController, _glowController]),
+                    builder: (context, child) => Opacity(
+                      opacity: _logoOpacity.value,
+                      child: Transform.scale(
+                        scale: _logoScale.value,
+                        child: _buildLogo(),
                       ),
                     ),
                   ),
@@ -121,37 +153,69 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 48),
 
                   // Headline
-                  Text(
-                    "Don't remember it.\nNabbo it.",
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          color: AppColors.textOnDark,
-                          fontWeight: FontWeight.w800,
-                        ),
-                    textAlign: TextAlign.center,
+                  AnimatedBuilder(
+                    animation: _entranceController,
+                    builder: (context, child) => Opacity(
+                      opacity: _headlineOpacity.value,
+                      child: Transform.translate(
+                        offset: _headlineSlide.value,
+                        child: child,
+                      ),
+                    ),
+                    child: Text(
+                      "Don't remember it.\nNabbo it.",
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            color: AppColors.textOnDark,
+                            fontWeight: FontWeight.w800,
+                            height: 1.15,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   const SizedBox(height: 20),
 
                   // Subtext
-                  Text(
-                    'Share school emails, WhatsApp messages, screenshots, '
-                    'and voice notes. Nabbo turns them into actions.',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.textOnDarkMuted,
-                          height: 1.5,
-                        ),
-                    textAlign: TextAlign.center,
+                  AnimatedBuilder(
+                    animation: _entranceController,
+                    builder: (context, child) => Opacity(
+                      opacity: _subtextOpacity.value,
+                      child: Transform.translate(
+                        offset: _subtextSlide.value,
+                        child: child,
+                      ),
+                    ),
+                    child: Text(
+                      'Share school emails, WhatsApp messages, screenshots, '
+                      'and voice notes. Nabbo turns them into actions.',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: AppColors.textOnDarkMuted,
+                            height: 1.5,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
 
                   const Spacer(flex: 3),
 
-                  // CTA
-                  FilledButton(
-                    onPressed: () => context.go('/onboarding/household'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.limeAccent,
-                      foregroundColor: AppColors.deepTeal,
+                  // CTA button
+                  AnimatedBuilder(
+                    animation: _entranceController,
+                    builder: (context, child) => Opacity(
+                      opacity: _buttonOpacity.value,
+                      child: Transform.translate(
+                        offset: _buttonSlide.value,
+                        child: child,
+                      ),
                     ),
-                    child: const Text('Start with your household'),
+                    child: FilledButton(
+                      onPressed: () => context.go('/onboarding/household'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.limeAccent,
+                        foregroundColor: AppColors.deepTeal,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                      ),
+                      child: const Text('Start with your household'),
+                    ),
                   ),
                   const SizedBox(height: 48),
                 ],
@@ -162,4 +226,3 @@ class WelcomeScreen extends StatelessWidget {
       ),
     );
   }
-}

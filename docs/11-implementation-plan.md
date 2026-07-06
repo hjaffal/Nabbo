@@ -54,7 +54,7 @@ Each phase builds on the previous. The goal is to reach a testable core loop (ca
 Each model uses Freezed + JSON serialization + Firestore converters.
 
 - [x] **Household** — id, name, primaryUserId, members[], timezone, defaultLanguage, notificationPreferences, emailAlias, status, createdAt, updatedAt
-- [x] **FamilyMember** — id, householdId, name, role (enum), ageGroup, relationship, contactMethod, permissions, defaultResponsibilities[], linkedRoutines[], color, status
+- [] **FamilyMember** — id, householdId, name, role (enum), photo, ageGroup, relationship, contactMethod, permissions, defaultResponsibilities[], linkedRoutines[], color, status
 - [x] **SourceMessage** — id, householdId, submittedBy, inputMethod (enum), originalContent, attachmentUrls[], attachmentType, sourceApp, receivedAt, processedAt, processingStatus (enum), extractedText, confidenceSummary, linkedExtractedItems[], privacyStatus
 - [x] **ExtractedItem** — id, householdId, sourceMessageId, affectedMemberId, itemType (enum), extractedSummary, detectedFields (map), confidenceLevel (enum), uncertainFields[], suggestedNextStep, reviewStatus (enum), createdAt
 - [x] **DecisionStatus** — id, extractedItemId, status (enum), decidedBy, decidedAt, editedFields[], dismissalReason, snoozeUntil, notes
@@ -76,53 +76,53 @@ Each model uses Freezed + JSON serialization + Firestore converters.
 
 ### 1.4 Repository Layer
 
-- [ ] Base repository abstract class with CRUD operations
+- [x] Base repository abstract class with CRUD operations
 - [x] **HouseholdRepository** — create, get, update, delete, getByUserId, updateEmailAlias, updateNotificationPrefs
 - [x] **FamilyMemberRepository** — create, getAll (by household), get, update, delete, getByRole
 - [x] **SourceMessageRepository** — create, getAll (by household, paginated), get, updateStatus, getByProcessingStatus, getRecent
 - [x] **ExtractedItemRepository** — create, getAll (by household), get, update, getPendingReview, getBySourceMessage, getByUrgency
-- [ ] **EventRepository** — create, getAll, get, update, delete, getByDate, getByMember, getUpcoming, getToday
-- [ ] **TaskRepository** — create, getAll, get, update, delete, getByDueDate, getByOwner, getByStatus, getOverdue
-- [ ] **DeadlineRepository** — create, getAll, get, update, getDueSoon, getOverdue, getByOwner
-- [ ] **RequiredItemRepository** — create, getAll, get, update, getByEvent, getByChecklist, getUnpacked, getNeededToday
-- [ ] **ChecklistRepository** — create, getAll, get, update, getByEvent, getByMember, getIncomplete
-- [ ] **FormRepository** — create, getAll, get, update, getDueSoon, getByStatus, getByOwner
-- [ ] **PaymentRepository** — create, getAll, get, update, getDueSoon, getByStatus, getByOwner
-- [ ] **LocationRepository** — create, getAll, get, update, delete, getByType, search
-- [ ] **ChangeRepository** — create, getAll, get, update, getPendingReview, getByObject
-- [ ] **RiskRepository** — create, getAll, get, update, getOpen, getByMember, getBySeverity, getForToday
-- [ ] **ReminderRepository** — create, getAll, get, update, delete, getScheduled, getByObject
-- [ ] **RoutineRepository** — create, getAll, get, update, getByMember, getActive
-- [ ] **CompletionRepository** — create, get, getByObject
+- [x] **EventRepository** — create, getAll, get, update, delete, getByDate, getByMember, getUpcoming, getToday
+- [x] **TaskRepository** — create, getAll, get, update, delete, getByDueDate, getByOwner, getByStatus, getOverdue
+- [x] **DeadlineRepository** — create, getAll, get, update, getDueSoon, getOverdue, getByOwner
+- [x] **RequiredItemRepository** — create, getAll, get, update, getByEvent, getByChecklist, getUnpacked, getNeededToday
+- [x] **ChecklistRepository** — create, getAll, get, update, getByEvent, getByMember, getIncomplete
+- [x] **FormRepository** — create, getAll, get, update, getDueSoon, getByStatus, getByOwner
+- [x] **PaymentRepository** — create, getAll, get, update, getDueSoon, getByStatus, getByOwner
+- [x] **LocationRepository** — create, getAll, get, update, delete, getByType, search
+- [x] **ChangeRepository** — create, getAll, get, update, getPendingReview, getByObject
+- [x] **RiskRepository** — create, getAll, get, update, getOpen, getByMember, getBySeverity, getForToday
+- [x] **ReminderRepository** — create, getAll, get, update, delete, getScheduled, getByObject
+- [x] **RoutineRepository** — create, getAll, get, update, getByMember, getActive
+- [x] **CompletionRepository** — create, get, getByObject
 
 ### 1.5 Enums & Constants
 
-- [ ] InputMethod: mobileShare, emailForwarding, freeText, voice, image, screenshot, pdf
-- [ ] ProcessingStatus: received, processing, extracting, completed, failed, noAction
-- [ ] ItemType: event, task, deadline, requiredItem, checklist, form, payment, location, change, risk, routineSuggestion
-- [ ] ReviewStatus: pendingReview, approved, editedAndApproved, dismissed, snoozed, assigned, alreadyHandled, needsClarification
-- [ ] ConfidenceLevel: high, medium, low, unknown
-- [ ] ConfidenceLabel: clear, checkThis, missing, suggested
-- [ ] EventStatus: pending, confirmed, changed, cancelled, completed, missed
-- [ ] TaskStatus: open, assigned, inProgress, completed, dismissed, overdue, blocked
-- [ ] DeadlineStatus: upcoming, dueToday, overdue, completed, dismissed
-- [ ] PackedStatus: notReady, ready, notNeeded, alreadyHandled, ownerMissing
-- [ ] FormStatus: notStarted, inProgress, completed, submitted, overdue, dismissed
-- [ ] PaymentStatus: pending, paid, overdue, dismissed, unknown
-- [ ] OwnerStatus: assigned, accepted, declined, completed, unassigned, needsReassignment
-- [ ] ReminderStatus: scheduled, sent, dismissed, completed, failed
-- [ ] RiskType: noOwner, deadlineNear, deadlineOverdue, conflictingEvents, locationChanged, itemNotPacked, paymentUnpaid, formIncomplete, travelTimeRisk, missingInfo
-- [ ] RiskSeverity: low, medium, high, critical
-- [ ] ChangeType: time, date, location, requiredItemAdded, requiredItemRemoved, deadline, eventCancelled, owner, payment, formRequirementAdded
-- [ ] MemberRole: primaryParent, secondaryParent, child, caregiver, grandparent, babysitter, other
-- [ ] Priority: low, medium, high, urgent
-- [ ] ChecklistType: morningLaunch, eveningReset, schoolTrip, sportsActivity, medical, travel, weekend, eventPrep
-- [ ] RequiredItemCategory: clothing, sportsGear, schoolMaterial, food, drink, document, money, medicine, device, other
-- [ ] FormAction: read, sign, print, complete, upload, submitOnline, returnPhysically, bringOnDay
-- [ ] LocationType: home, school, sportsClub, activityVenue, doctor, caregiverLocation, pickupPoint, dropoffPoint, other
-- [ ] ReminderType: task, deadline, departure, checklist, payment, form, change, ownerReminder
-- [ ] DismissalReason: notRelevant, duplicate, alreadyHandled, wrongExtraction, noActionNeeded, spamNoise
-- [ ] SnoozeOption: laterToday, tomorrow, thisWeekend, nextWeek, custom
+- [x] InputMethod: mobileShare, emailForwarding, freeText, voice, image, screenshot, pdf
+- [x] ProcessingStatus: received, processing, extracting, completed, failed, noAction
+- [x] ItemType: event, task, deadline, requiredItem, checklist, form, payment, location, change, risk, routineSuggestion
+- [x] ReviewStatus: pendingReview, approved, editedAndApproved, dismissed, snoozed, assigned, alreadyHandled, needsClarification
+- [x] ConfidenceLevel: high, medium, low, unknown
+- [x] ConfidenceLabel: clear, checkThis, missing, suggested
+- [x] EventStatus: pending, confirmed, changed, cancelled, completed, missed
+- [x] TaskStatus: open, assigned, inProgress, completed, dismissed, overdue, blocked
+- [x] DeadlineStatus: upcoming, dueToday, overdue, completed, dismissed
+- [x] PackedStatus: notReady, ready, notNeeded, alreadyHandled, ownerMissing
+- [x] FormStatus: notStarted, inProgress, completed, submitted, overdue, dismissed
+- [x] PaymentStatus: pending, paid, overdue, dismissed, unknown
+- [x] OwnerStatus: assigned, accepted, declined, completed, unassigned, needsReassignment
+- [x] ReminderStatus: scheduled, sent, dismissed, completed, failed
+- [x] RiskType: noOwner, deadlineNear, deadlineOverdue, conflictingEvents, locationChanged, itemNotPacked, paymentUnpaid, formIncomplete, travelTimeRisk, missingInfo
+- [x] RiskSeverity: low, medium, high, critical
+- [x] ChangeType: time, date, location, requiredItemAdded, requiredItemRemoved, deadline, eventCancelled, owner, payment, formRequirementAdded
+- [x] MemberRole: primaryParent, secondaryParent, child, caregiver, grandparent, babysitter, other
+- [x] Priority: low, medium, high, urgent
+- [x] ChecklistType: morningLaunch, eveningReset, schoolTrip, sportsActivity, medical, travel, weekend, eventPrep
+- [x] RequiredItemCategory: clothing, sportsGear, schoolMaterial, food, drink, document, money, medicine, device, other
+- [x] FormAction: read, sign, print, complete, upload, submitOnline, returnPhysically, bringOnDay
+- [x] LocationType: home, school, sportsClub, activityVenue, doctor, caregiverLocation, pickupPoint, dropoffPoint, other
+- [x] ReminderType: task, deadline, departure, checklist, payment, form, change, ownerReminder
+- [x] DismissalReason: notRelevant, duplicate, alreadyHandled, wrongExtraction, noActionNeeded, spamNoise
+- [x] SnoozeOption: laterToday, tomorrow, thisWeekend, nextWeek, custom
 
 ### 1.6 Authentication Flow
 
