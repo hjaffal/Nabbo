@@ -1,10 +1,13 @@
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const { getMessaging } = require('firebase-admin/messaging');
 const { GoogleGenAI } = require('@google/genai');
 
 initializeApp();
 const db = getFirestore();
+const messaging = getMessaging();
 
 const PROJECT_ID = 'nabbo-app-4d98a';
 const LOCATION = 'europe-west1';
@@ -138,6 +141,9 @@ exports.extractSourceMessage = onDocumentCreated(
       });
 
       console.log(`Created ${extractedItemIds.length} extracted items for message: ${messageId}`);
+
+      // Send push notification to household
+      await sendReviewNotification(householdId, extracted);
     } catch (error) {
       console.error('Extraction error:', error);
       await snapshot.ref.update({
@@ -242,3 +248,186 @@ function parseExtractionResponse(text) {
     return [];
   }
 }
+
+
+/**
+ * Send push notification when new items need review
+ */
+async function sendReviewNotification(householdId, extractedItems) {
+  try {
+    // Get household to find primary user
+    const householdDoc = await db.collection('households').doc(householdId).get();
+    if (!householdDoc.exists) return;
+
+    const household = householdDoc.data();
+    const userId = household.primaryUserId;
+
+    // Get user's FCM token
+    const tokenDoc = await db.collection('userTokens').doc(userId).get();
+    if (!tokenDoc.exists || !tokenDoc.data().fcmToken) return;
+
+    const fcmToken = tokenDoc.data().fcmToken;
+
+    // Build notification message
+    const itemCount = extractedItems.length;
+    const firstItem = extractedItems[0];
+    const hasUrgent = extractedItems.some(i =>
+      i.riskType || i.changeType || (i.itemType === 'deadline')
+    );
+
+    let title, body;
+
+    if (hasUrgent) {
+      const change = extractedItems.find(i => i.changeType);
+      const risk = extractedItems.find(i => i.riskType);
+      if (change) {
+        title = 'Change detected';
+        body = change.operationalSummary;
+      } else if (risk) {
+        title = 'Needs attention';
+        body = risk.operationalSummary;
+      } else {
+        title = `${itemCount} item${itemCount > 1 ? 's' : ''} need review`;
+        body = firstItem.operationalSummary;
+      }
+    } else {
+      title = `${itemCount} item${itemCount > 1 ? 's' : ''} need review`;
+      body = firstItem.operationalSummary;
+    }
+
+    await messaging.send({
+      token: fcmToken,
+      notification: { title, body },
+      data: {
+        type: 'review_needed',
+        householdId,
+        itemCount: String(itemCount),
+      },
+      apns: {
+        payload: {
+          aps: { badge: itemCount, sound: 'default' },
+        },
+      },
+    });
+
+    console.log(`Notification sent to user ${userId}: ${title}`);
+  } catch (error) {
+    console.error('Failed to send notification:', error.message);
+  }
+}
+
+/**
+ * Scheduled function: runs every hour to check for deadline reminders
+ * Sends notifications for deadlines due within 24 hours
+ */
+exports.checkDeadlines = onSchedule(
+  {
+    schedule: 'every 60 minutes',
+    region: LOCATION,
+  },
+  async () => {
+    const now = new Date();
+    const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    // Get all households
+    const households = await db.collection('households').get();
+
+    for (const household of households.docs) {
+      const householdId = household.id;
+
+      // Check deadlines due within 24h
+      const deadlines = await db
+        .collection('households')
+        .doc(householdId)
+        .collection('deadlines')
+        .where('status', '==', 'confirmed')
+        .where('dueDateTime', '>=', Timestamp.fromDate(now))
+        .where('dueDateTime', '<=', Timestamp.fromDate(in24Hours))
+        .get();
+
+      // Check payments due within 24h
+      const payments = await db
+        .collection('households')
+        .doc(householdId)
+        .collection('payments')
+        .where('status', '==', 'confirmed')
+        .where('dueDate', '>=', Timestamp.fromDate(now))
+        .where('dueDate', '<=', Timestamp.fromDate(in24Hours))
+        .get();
+
+      // Check tasks with no owner (owner gaps)
+      const ownerGaps = await db
+        .collection('households')
+        .doc(householdId)
+        .collection('tasks')
+        .where('status', '==', 'confirmed')
+        .where('ownerId', '==', null)
+        .get();
+
+      const alerts = [];
+
+      for (const d of deadlines.docs) {
+        alerts.push({
+          type: 'deadline',
+          title: d.data().title,
+          member: d.data().affectedMemberName,
+        });
+      }
+
+      for (const p of payments.docs) {
+        alerts.push({
+          type: 'payment',
+          title: p.data().title,
+          amount: p.data().amount,
+          currency: p.data().currency,
+        });
+      }
+
+      for (const t of ownerGaps.docs) {
+        alerts.push({
+          type: 'owner_gap',
+          title: t.data().title,
+        });
+      }
+
+      if (alerts.length === 0) continue;
+
+      // Send notification
+      const userId = household.data().primaryUserId;
+      const tokenDoc = await db.collection('userTokens').doc(userId).get();
+      if (!tokenDoc.exists || !tokenDoc.data().fcmToken) continue;
+
+      const fcmToken = tokenDoc.data().fcmToken;
+      const deadlineCount = deadlines.size;
+      const paymentCount = payments.size;
+      const ownerGapCount = ownerGaps.size;
+
+      const parts = [];
+      if (deadlineCount > 0) parts.push(`${deadlineCount} deadline${deadlineCount > 1 ? 's' : ''} due`);
+      if (paymentCount > 0) parts.push(`${paymentCount} payment${paymentCount > 1 ? 's' : ''} due`);
+      if (ownerGapCount > 0) parts.push(`${ownerGapCount} owner gap${ownerGapCount > 1 ? 's' : ''}`);
+
+      try {
+        await messaging.send({
+          token: fcmToken,
+          notification: {
+            title: 'Needs attention today',
+            body: parts.join(', '),
+          },
+          data: {
+            type: 'deadline_reminder',
+            householdId,
+          },
+          apns: {
+            payload: {
+              aps: { sound: 'default' },
+            },
+          },
+        });
+        console.log(`Deadline reminder sent to household ${householdId}`);
+      } catch (err) {
+        console.error(`Failed to send deadline reminder to ${householdId}:`, err.message);
+      }
+    }
+  }
+);

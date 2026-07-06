@@ -1,7 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_colors.dart';
 import '../../features/capture/presentation/capture_sheet.dart';
 import '../../features/capture/presentation/voice_capture_sheet.dart';
 import '../../features/capture/presentation/image_capture_sheet.dart';
@@ -34,91 +37,13 @@ class _AppShellState extends ConsumerState<AppShell> {
     super.dispose();
   }
 
-  void _showCaptureOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Nabbo it',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'How do you want to capture?',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 20),
-            _CaptureOption(
-              icon: Icons.edit_note_rounded,
-              label: 'Type a note',
-              subtitle: 'Quick text reminder',
-              onTap: () {
-                Navigator.pop(ctx);
-                showCaptureSheet(context);
-              },
-            ),
-            const SizedBox(height: 8),
-            _CaptureOption(
-              icon: Icons.mic_rounded,
-              label: 'Voice note',
-              subtitle: 'Speak a reminder',
-              onTap: () {
-                Navigator.pop(ctx);
-                showVoiceCaptureSheet(context);
-              },
-            ),
-            const SizedBox(height: 8),
-            _CaptureOption(
-              icon: Icons.image_rounded,
-              label: 'Photo / Screenshot',
-              subtitle: 'Capture from camera or gallery',
-              onTap: () {
-                Navigator.pop(ctx);
-                showImageCaptureSheet(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final showFab = widget.navigationShell.currentIndex == 0;
 
     return Scaffold(
       body: widget.navigationShell,
-      floatingActionButton: showFab
-          ? FloatingActionButton.extended(
-              onPressed: () => _showCaptureOptions(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Nabbo it'),
-            )
-          : null,
+      floatingActionButton: showFab ? const _ExpandableFab() : null,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -157,59 +82,228 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-class _CaptureOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final VoidCallback onTap;
+/// Expandable FAB with animated speed-dial options that fan out.
+class _ExpandableFab extends StatefulWidget {
+  const _ExpandableFab();
 
-  const _CaptureOption({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.onTap,
-  });
+  @override
+  State<_ExpandableFab> createState() => _ExpandableFabState();
+}
+
+class _ExpandableFabState extends State<_ExpandableFab>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _isOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() {
+      _isOpen = !_isOpen;
+      if (_isOpen) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
+
+  void _close() {
+    if (_isOpen) _toggle();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.bottomRight,
+      children: [
+        // Backdrop overlay when open
+        if (_isOpen)
+          Positioned.fill(
+            right: -16,
+            bottom: -16,
+            left: -MediaQuery.of(context).size.width,
+            top: -MediaQuery.of(context).size.height,
+            child: GestureDetector(
+              onTap: _close,
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) => Opacity(
+                  opacity: _controller.value,
+                  child: child,
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.15),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Floating options
+        _buildOption(
+          index: 2,
+          icon: Icons.image_rounded,
+          label: 'Photo',
+          color: AppColors.chipGreen,
+          bgColor: AppColors.greenLight,
+          offset: 200,
+          onTap: () {
+            _close();
+            showImageCaptureSheet(context);
+          },
+        ),
+        _buildOption(
+          index: 1,
+          icon: Icons.mic_rounded,
+          label: 'Voice',
+          color: AppColors.chipOrange,
+          bgColor: AppColors.orangeLight,
+          offset: 136,
+          onTap: () {
+            _close();
+            showVoiceCaptureSheet(context);
+          },
+        ),
+        _buildOption(
+          index: 0,
+          icon: Icons.edit_note_rounded,
+          label: 'Note',
+          color: AppColors.chipPurple,
+          bgColor: AppColors.lavenderLight,
+          offset: 72,
+          onTap: () {
+            _close();
+            showCaptureSheet(context);
+          },
+        ),
+
+        // Main FAB
+        _buildMainFab(),
+      ],
+    );
+  }
+
+  Widget _buildOption({
+    required int index,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color bgColor,
+    required double offset,
+    required VoidCallback onTap,
+  }) {
+    // Stagger the animation for each option
+    final delay = index * 0.1;
+    final animation = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(delay, 0.7 + delay, curve: Curves.easeOutBack),
+    );
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final scale = animation.value;
+        final translateY = (1 - scale) * 20;
+
+        return Positioned(
+          bottom: offset * scale,
+          right: 0,
+          child: Transform.translate(
+            offset: Offset(0, translateY),
+            child: Opacity(
+              opacity: scale.clamp(0.0, 1.0),
+              child: Transform.scale(
+                scale: scale.clamp(0.0, 1.0),
+                alignment: Alignment.bottomRight,
+                child: child,
+              ),
+            ),
+          ),
+        );
+      },
+      child: GestureDetector(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(50),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.2),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer),
+                child: Icon(icon, size: 20, color: color),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: Theme.of(context).textTheme.titleSmall),
-                    Text(subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            )),
-                  ],
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: TextStyle(
+                  color: AppColors.textBlack,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
                 ),
               ),
-              Icon(Icons.chevron_right,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildMainFab() {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final rotation = _controller.value * 0.125; // 45 degrees = 0.125 turns
+        return Transform.rotate(
+          angle: rotation * 3.14159 * 2,
+          child: child,
+        );
+      },
+      child: FloatingActionButton(
+        onPressed: _toggle,
+        elevation: _isOpen ? 8 : 4,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
     );
   }
