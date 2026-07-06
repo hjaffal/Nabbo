@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../household/data/models/family_member_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 
@@ -84,83 +85,164 @@ class _AddPeopleScreenState extends ConsumerState<AddPeopleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Other People')),
+      appBar: AppBar(backgroundColor: Colors.transparent),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Anyone else in the household?',
-              style: Theme.of(context).textTheme.titleLarge,
+              'Anyone else?',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
             Text(
               'Optional. You can add more people later.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
 
-            // Input row
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      hintText: 'e.g. Sara',
-                    ),
-                    onSubmitted: (_) => _addPerson(),
+            // Input section
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Name',
+                            hintText: 'e.g. Sara',
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          onSubmitted: (_) => _addPerson(),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _addPerson,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: AppColors.deepTeal,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.add, color: Colors.white, size: 20),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                DropdownButton<MemberRole>(
-                  value: _selectedRole,
-                  items: [
-                    MemberRole.secondaryParent,
-                    MemberRole.caregiver,
-                    MemberRole.grandparent,
-                    MemberRole.babysitter,
-                    MemberRole.other,
-                  ]
-                      .map((r) => DropdownMenuItem(
-                          value: r, child: Text(_roleLabel(r))))
-                      .toList(),
-                  onChanged: (v) => setState(() => _selectedRole = v!),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _addPerson,
-                  icon: const Icon(Icons.add),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  // Role selector
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      MemberRole.secondaryParent,
+                      MemberRole.caregiver,
+                      MemberRole.grandparent,
+                      MemberRole.babysitter,
+                      MemberRole.other,
+                    ].map((role) {
+                      final selected = _selectedRole == role;
+                      return ChoiceChip(
+                        label: Text(_roleLabel(role)),
+                        selected: selected,
+                        onSelected: (v) =>
+                            setState(() => _selectedRole = role),
+                        selectedColor: AppColors.deepTeal,
+                        labelStyle: TextStyle(
+                          color: selected ? Colors.white : AppColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 
             // People list
             Expanded(
-              child: ListView.builder(
-                itemCount: _people.length,
-                itemBuilder: (context, index) {
-                  final person = _people[index];
-                  return Card(
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        child: Text(person.name[0].toUpperCase()),
+              child: _people.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No people added yet.',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      title: Text(person.name),
-                      subtitle: Text(_roleLabel(person.role)),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => _removePerson(index),
-                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: _people.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final person = _people[index];
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: AppColors.mintCard,
+                                child: Text(
+                                  person.name[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppColors.deepTeal,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      person.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall,
+                                    ),
+                                    Text(
+                                      _roleLabel(person.role),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => _removePerson(index),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 18,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
             const SizedBox(height: 16),
 
@@ -170,7 +252,10 @@ class _AddPeopleScreenState extends ConsumerState<AddPeopleScreen> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text('Continue'),
             ),

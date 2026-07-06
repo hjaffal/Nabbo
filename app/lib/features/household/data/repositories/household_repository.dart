@@ -21,12 +21,22 @@ class HouseholdRepository {
   // Household CRUD
   Future<HouseholdModel> createHousehold(HouseholdModel household) async {
     final docRef = _householdsRef.doc();
+    final now = DateTime.now();
     final data = household.copyWith(
       id: docRef.id,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+      createdAt: now,
+      updatedAt: now,
     );
-    await docRef.set(_toFirestoreData(data));
+    await docRef.set({
+      'name': data.name,
+      'primaryUserId': data.primaryUserId,
+      'timezone': data.timezone,
+      'language': data.language,
+      'emailAlias': data.emailAlias,
+      'memberIds': data.memberIds,
+      'createdAt': Timestamp.fromDate(now),
+      'updatedAt': Timestamp.fromDate(now),
+    });
     return data;
   }
 
@@ -46,18 +56,34 @@ class HouseholdRepository {
   }
 
   Future<void> updateHousehold(HouseholdModel household) async {
-    final data = household.copyWith(updatedAt: DateTime.now());
-    await _householdsRef.doc(household.id).update(_toFirestoreData(data));
+    await _householdsRef.doc(household.id).update({
+      'name': household.name,
+      'primaryUserId': household.primaryUserId,
+      'timezone': household.timezone,
+      'language': household.language,
+      'emailAlias': household.emailAlias,
+      'memberIds': household.memberIds,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
   }
 
   // Family Member CRUD
   Future<FamilyMemberModel> addFamilyMember(FamilyMemberModel member) async {
     final docRef = _membersRef(member.householdId).doc();
+    final now = DateTime.now();
     final data = member.copyWith(
       id: docRef.id,
-      createdAt: DateTime.now(),
+      createdAt: now,
     );
-    await docRef.set(_memberToFirestoreData(data));
+    await docRef.set({
+      'householdId': data.householdId,
+      'name': data.name,
+      'role': data.role.name,
+      'ageGroup': data.ageGroup?.name,
+      'color': data.color,
+      'defaultResponsibilities': data.defaultResponsibilities,
+      'createdAt': Timestamp.fromDate(now),
+    });
     return data;
   }
 
@@ -87,12 +113,6 @@ class HouseholdRepository {
   }
 
   // Helpers
-  Map<String, dynamic> _toFirestoreData(HouseholdModel household) {
-    final json = household.toJson();
-    json.remove('id');
-    return json;
-  }
-
   Map<String, dynamic> _memberToFirestoreData(FamilyMemberModel member) {
     final json = member.toJson();
     json.remove('id');

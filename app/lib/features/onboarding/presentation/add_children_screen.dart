@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../household/data/models/family_member_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 
@@ -80,66 +81,101 @@ class _AddChildrenScreenState extends ConsumerState<AddChildrenScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Children')),
+      appBar: AppBar(backgroundColor: Colors.transparent),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Who are the children in your household?',
-              style: Theme.of(context).textTheme.titleLarge,
+              'Who are the children?',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
             Text(
               'This helps Nabbo know who messages affect.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
 
             // Input row
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Child name',
-                      hintText: 'e.g. Adam',
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Child name',
+                        hintText: 'e.g. Adam',
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      onSubmitted: (_) => _addChild(),
                     ),
-                    onSubmitted: (_) => _addChild(),
                   ),
-                ),
-                const SizedBox(width: 12),
-                IconButton.filled(
-                  onPressed: _addChild,
-                  icon: const Icon(Icons.add),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: _addChild,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        color: AppColors.deepTeal,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 
-            // Children list
+            // Children chips
             Expanded(
-              child: ListView.builder(
-                itemCount: _children.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        child: Text(_children[index][0].toUpperCase()),
+              child: _children.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No children added yet.',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      title: Text(_children[index]),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => _removeChild(index),
-                      ),
+                    )
+                  : Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(_children.length, (index) {
+                        return Chip(
+                          avatar: CircleAvatar(
+                            backgroundColor: AppColors.lavenderCard,
+                            child: Text(
+                              _children[index][0].toUpperCase(),
+                              style: const TextStyle(
+                                color: AppColors.deepTeal,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          label: Text(_children[index]),
+                          deleteIcon: const Icon(Icons.close, size: 16),
+                          onDeleted: () => _removeChild(index),
+                          backgroundColor: AppColors.surface,
+                          side: const BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                        );
+                      }),
                     ),
-                  );
-                },
-              ),
             ),
             const SizedBox(height: 16),
 
@@ -149,7 +185,10 @@ class _AddChildrenScreenState extends ConsumerState<AddChildrenScreen> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text('Continue'),
             ),

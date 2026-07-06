@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 
@@ -64,7 +65,6 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
         language: _language,
       ));
 
-      // Update user display name
       await FirebaseAuth.instance.currentUser!
           .updateDisplayName(_parentNameController.text.trim());
 
@@ -83,64 +83,82 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Household Setup')),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Tell us about your household',
-                style: Theme.of(context).textTheme.titleLarge,
+                'Tell us about\nyour household',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
+              Text(
+                'This helps Nabbo organise everything for your family.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 32),
 
-              // Household name
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Household name',
-                  hintText: 'e.g. The Jaffal Family',
+              // Form in a card
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Household name',
+                        hintText: 'e.g. The Jaffal Family',
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 16),
 
-              // Parent name
-              TextFormField(
-                controller: _parentNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Your name',
-                  hintText: 'e.g. Hasan',
+                    TextFormField(
+                      controller: _parentNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Your name',
+                        hintText: 'e.g. Hasan',
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField<String>(
+                      initialValue: _timezone,
+                      decoration: const InputDecoration(labelText: 'Timezone'),
+                      items: _timezones
+                          .map((tz) =>
+                              DropdownMenuItem(value: tz, child: Text(tz)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _timezone = v!),
+                    ),
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField<String>(
+                      initialValue: _language,
+                      decoration:
+                          const InputDecoration(labelText: 'Default language'),
+                      items: _languages.entries
+                          .map((e) => DropdownMenuItem(
+                              value: e.key, child: Text(e.value)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _language = v!),
+                    ),
+                  ],
                 ),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-
-              // Timezone
-              DropdownButtonFormField<String>(
-                initialValue: _timezone,
-                decoration: const InputDecoration(labelText: 'Timezone'),
-                items: _timezones
-                    .map((tz) => DropdownMenuItem(value: tz, child: Text(tz)))
-                    .toList(),
-                onChanged: (v) => setState(() => _timezone = v!),
-              ),
-              const SizedBox(height: 16),
-
-              // Language
-              DropdownButtonFormField<String>(
-                initialValue: _language,
-                decoration: const InputDecoration(labelText: 'Default language'),
-                items: _languages.entries
-                    .map((e) =>
-                        DropdownMenuItem(value: e.key, child: Text(e.value)))
-                    .toList(),
-                onChanged: (v) => setState(() => _language = v!),
               ),
               const SizedBox(height: 32),
 
@@ -150,7 +168,10 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text('Continue'),
               ),

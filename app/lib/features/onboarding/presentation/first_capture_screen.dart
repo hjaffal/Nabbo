@@ -1,38 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
+
 class FirstCaptureScreen extends StatelessWidget {
   const FirstCaptureScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Get Started')),
+      appBar: AppBar(backgroundColor: Colors.transparent),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               "You're all set!",
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Try sending something to Nabbo now. Choose how you want to start:',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              'Try sending something to Nabbo now.',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 32),
 
-            // Option cards
             _CaptureOptionCard(
               icon: Icons.share_outlined,
               title: 'Share something',
               description: 'Share a message or screenshot from another app',
+              color: AppColors.mintCard,
               onTap: () => context.go('/today'),
             ),
             const SizedBox(height: 12),
@@ -40,6 +38,7 @@ class FirstCaptureScreen extends StatelessWidget {
               icon: Icons.email_outlined,
               title: 'Forward an email',
               description: 'Forward a school or activity email to your Nabbo address',
+              color: AppColors.skyBlueCard,
               onTap: () => context.go('/today'),
             ),
             const SizedBox(height: 12),
@@ -47,6 +46,7 @@ class FirstCaptureScreen extends StatelessWidget {
               icon: Icons.edit_note_outlined,
               title: 'Type a quick note',
               description: 'e.g. "Adam has football Friday at 18:30"',
+              color: AppColors.lavenderCard,
               onTap: () => context.go('/today'),
             ),
 
@@ -66,60 +66,63 @@ class _CaptureOptionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
+  final Color color;
   final VoidCallback onTap;
 
   const _CaptureOptionCard({
     required this.icon,
     required this.title,
     required this.description,
+    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.deepTeal.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
+              child: Icon(icon, color: AppColors.deepTeal, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppColors.deepTeal,
+                        ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.deepTeal.withValues(alpha: 0.7),
+                        ),
+                  ),
+                ],
               ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.deepTeal,
+            ),
+          ],
         ),
       ),
     );

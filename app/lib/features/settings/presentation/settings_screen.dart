@@ -6,6 +6,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
+import 'edit_household_screen.dart';
+import 'family_members_screen.dart';
+import 'notification_settings_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
   final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -36,7 +39,14 @@ class SettingsScreen extends ConsumerWidget {
                   ListTile(
                     leading: const Icon(Icons.home_outlined),
                     title: Text(household.name),
-                    subtitle: const Text('Household name'),
+                    subtitle: Text('${household.timezone} • ${household.language.toUpperCase()}'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EditHouseholdScreen(),
+                      ),
+                    ),
                   ),
                   if (household.emailAlias != null)
                     ListTile(
@@ -54,32 +64,29 @@ class SettingsScreen extends ConsumerWidget {
                         },
                       ),
                     ),
-                  ListTile(
-                    leading: const Icon(Icons.language_outlined),
-                    title: Text(household.language.toUpperCase()),
-                    subtitle: const Text('Language'),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.schedule_outlined),
-                    title: Text(household.timezone),
-                    subtitle: const Text('Timezone'),
-                  ),
                 ],
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
             error: (e, _) => ListTile(title: Text('Error: $e')),
           ),
 
           const Divider(),
-          _SectionHeader(title: 'Family Members'),
+          _SectionHeader(title: 'Family'),
           ListTile(
             leading: const Icon(Icons.people_outlined),
-            title: const Text('Manage family members'),
+            title: const Text('Family members'),
+            subtitle: const Text('Add, edit, or remove members'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Navigate to family members management
-            },
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const FamilyMembersScreen(),
+              ),
+            ),
           ),
 
           const Divider(),
@@ -87,10 +94,14 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.notifications_outlined),
             title: const Text('Notification settings'),
+            subtitle: const Text('Alerts, briefs, quiet hours'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Navigate to notification settings
-            },
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const NotificationSettingsScreen(),
+              ),
+            ),
           ),
 
           const Divider(),

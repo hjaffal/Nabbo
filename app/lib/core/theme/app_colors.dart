@@ -3,27 +3,45 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Primary brand color
-  static const Color primary = Color(0xFF2563EB);
-  static const Color primaryLight = Color(0xFF60A5FA);
-  static const Color primaryDark = Color(0xFF1D4ED8);
+  // ─── Primary ───────────────────────────────────────────────────────────────
+  /// Trust color. Headers, navigation, primary surfaces, app icon.
+  static const Color deepTeal = Color(0xFF123F49);
 
-  // Semantic colors
-  static const Color success = Color(0xFF16A34A);
-  static const Color warning = Color(0xFFD97706);
-  static const Color error = Color(0xFFDC2626);
-  static const Color info = Color(0xFF0891B2);
+  /// Main app screen background. Calm, light, not harsh white.
+  static const Color iceBackground = Color(0xFFEAF5F5);
 
-  // Confidence labels
-  static const Color confidenceClear = Color(0xFF16A34A);
-  static const Color confidenceCheckThis = Color(0xFFD97706);
-  static const Color confidenceMissing = Color(0xFFDC2626);
-  static const Color confidenceSuggested = Color(0xFF7C3AED);
+  /// Outer backgrounds, onboarding surfaces, large calm panels.
+  static const Color mistBlue = Color(0xFFA8C9CF);
 
-  // Neutral
-  static const Color background = Color(0xFFF8FAFC);
+  // ─── Card Colors ───────────────────────────────────────────────────────────
+  /// Review items, child cards, non-urgent action groups.
+  static const Color lavenderCard = Color(0xFFD8C8F4);
+
+  /// Completed, ready, packed, low-risk states.
+  static const Color mintCard = Color(0xFFD6F4D2);
+
+  /// Summaries, daily brief, next-action information.
+  static const Color skyBlueCard = Color(0xFFAEE3F0);
+
+  /// Gentle attention, snoozed items, review states.
+  static const Color blushPink = Color(0xFFF1C4E8);
+
+  // ─── Accents ───────────────────────────────────────────────────────────────
+  /// Tiny highlight only: selected date, active underline, progress signal.
+  static const Color limeAccent = Color(0xFFC9F83F);
+
+  /// Real attention only: changes, risks, owner missing, overdue.
+  static const Color coralAlert = Color(0xFFFF6B6B);
+
+  // ─── Text ──────────────────────────────────────────────────────────────────
+  static const Color textPrimary = Color(0xFF123F49);
+  static const Color textSecondary = Color(0xFF5A7A82);
+  static const Color textOnDark = Color(0xFFFFFFFF);
+  static const Color textOnDarkMuted = Color(0xFFCDE5E9);
+
+  // ─── Utility ───────────────────────────────────────────────────────────────
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF1E293B);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color border = Color(0xFFE2E8F0);
+  static const Color border = Color(0xFFD4E5E8);
+  static const Color divider = Color(0xFFE0ECED);
+  static const Color shadow = Color(0x0A000000);
 }
