@@ -41,12 +41,15 @@ class SettingsScreen extends ConsumerWidget {
                     title: Text(household.name),
                     subtitle: Text('${household.timezone} • ${household.language.toUpperCase()}'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const EditHouseholdScreen(),
-                      ),
-                    ),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const EditHouseholdScreen(),
+                        ),
+                      );
+                      ref.invalidate(_householdProvider);
+                    },
                   ),
                   if (household.emailAlias != null)
                     ListTile(

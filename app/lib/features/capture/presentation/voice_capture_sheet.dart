@@ -29,25 +29,31 @@ class _VoiceCaptureSheetState extends ConsumerState<VoiceCaptureSheet> {
   }
 
   Future<void> _initSpeech() async {
-    final available = await _speech.initialize(
-      onError: (error) {
-        setState(() {
-          _error = error.errorMsg;
-          _isListening = false;
-        });
-      },
-      onStatus: (status) {
-        if (status == 'done' || status == 'notListening') {
-          setState(() => _isListening = false);
-        }
-      },
-    );
-    setState(() => _isInitialized = available);
+    try {
+      final available = await _speech.initialize(
+        onError: (error) {
+          if (mounted) {
+            setState(() {
+              _error = 'Speech error: ${error.errorMsg}. Try again or use text input.';
+              _isListening = false;
+            });
+          }
+        },
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            if (mounted) setState(() => _isListening = false);
+          }
+        },
+      );
+      setState(() => _isInitialized = available);
 
-    if (available) {
-      _startListening();
-    } else {
-      setState(() => _error = 'Speech recognition not available on this device.');
+      if (available) {
+        _startListening();
+      } else {
+        setState(() => _error = 'Speech recognition not available. Use text input instead.');
+      }
+    } catch (e) {
+      setState(() => _error = 'Could not start speech recognition. Use text input instead.');
     }
   }
 
