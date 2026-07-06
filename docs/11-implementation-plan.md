@@ -23,7 +23,7 @@ Each phase builds on the previous. The goal is to reach a testable core loop (ca
   - `lib/features/` — auth, onboarding, capture, review, today, settings, household
   - Each feature: `data/`, `domain/`, `presentation/`
 - [x] Riverpod setup with code generation (riverpod_generator + riverpod_annotation)
-- [ ] Freezed models with JSON serialization for all 20 data objects
+- [x] Freezed models with JSON serialization for all 20 data objects
 - [x] Go Router navigation with auth guards and redirect logic
 - [x] Environment configuration (dev, staging, production)
 - [x] Error handling infrastructure (global error boundary, crash reporting setup)
@@ -57,22 +57,22 @@ Each model uses Freezed + JSON serialization + Firestore converters.
 - [x] **FamilyMember** — id, householdId, name, role (enum), ageGroup, relationship, contactMethod, permissions, defaultResponsibilities[], linkedRoutines[], color, status
 - [x] **SourceMessage** — id, householdId, submittedBy, inputMethod (enum), originalContent, attachmentUrls[], attachmentType, sourceApp, receivedAt, processedAt, processingStatus (enum), extractedText, confidenceSummary, linkedExtractedItems[], privacyStatus
 - [x] **ExtractedItem** — id, householdId, sourceMessageId, affectedMemberId, itemType (enum), extractedSummary, detectedFields (map), confidenceLevel (enum), uncertainFields[], suggestedNextStep, reviewStatus (enum), createdAt
-- [ ] **DecisionStatus** — id, extractedItemId, status (enum), decidedBy, decidedAt, editedFields[], dismissalReason, snoozeUntil, notes
-- [ ] **Event** — id, householdId, title, affectedMemberId, startDateTime, endDateTime, location (LocationRef), owner (OwnerRef), relatedSourceId, relatedTasks[], relatedChecklist, relatedRequiredItems[], relatedPayment, relatedForm, recurrence, confidenceLevel, changeHistory[], reminderSettings, status (enum), createdAt, updatedAt
-- [ ] **Task** — id, householdId, title, description, affectedMemberId, ownerId, dueDate, dueTime, priority (enum), relatedEventId, relatedSourceId, relatedFormId, relatedPaymentId, completionStatus, reminderSettings, status (enum), createdAt, updatedAt
-- [ ] **Deadline** — id, householdId, title, dueDateTime, affectedMemberId, ownerId, relatedTaskId, relatedFormId, relatedPaymentId, relatedEventId, relatedSourceId, urgencyLevel (enum), reminderSchedule, status (enum), createdAt
-- [ ] **RequiredItem** — id, householdId, name, quantity, affectedMemberId, relatedEventId, relatedChecklistId, relatedSourceId, ownerId, neededByDateTime, packedStatus (enum), category (enum), isRecurring, suggestedBySystem, confidence, createdAt
-- [ ] **Checklist** — id, householdId, title, type (enum), affectedMemberId, relatedEventId, relatedRoutineId, items[] (embedded), ownerId, date, completionStatus, createdManually, createdAt, updatedAt
-- [ ] **Form** — id, householdId, title, affectedMemberId, sourceMessageId, relatedEventId, relatedDeadlineId, ownerId, requiredAction (enum), submissionMethod, dueDate, status (enum), attachmentUrl, reminderSettings, createdAt, updatedAt
-- [ ] **Payment** — id, householdId, title, amount, currency, affectedMemberId, relatedEventId, relatedSourceId, relatedDeadlineId, ownerId, paymentMethod, paymentLink, dueDate, status (enum), createdAt, updatedAt
-- [ ] **Location** — id, householdId, name, address, type (enum), linkedMembers[], linkedRoutines[], linkedEvents[], travelNotes, defaultTravelTime, confidence, createdAt
-- [ ] **Owner** — id, householdId, personId, assignedObjectType, assignedObjectId, assignedBy, assignedAt, status (enum), completionConfirmation, escalationStatus
-- [ ] **Reminder** — id, householdId, relatedObjectType, relatedObjectId, recipientId, reminderTime, type (enum), message, status (enum), channel, createdAt
-- [ ] **Change** — id, householdId, relatedObjectType, relatedObjectId, sourceMessageId, previousValue, newValue, changeType (enum), detectedAt, confidenceLevel, impactLevel (enum), reviewStatus (enum)
-- [ ] **Risk** — id, householdId, title, description, affectedMemberId, relatedObjects[], type (enum), severity (enum), suggestedAction, ownerId, status (enum), createdAt, resolvedAt
-- [ ] **Routine** — id, householdId, name, affectedMemberId, type (enum), frequency, commonLocation, commonItems[], defaultOwnerId, defaultChecklist, linkedEvents[], confidence, lastUsedDate, createdAt
-- [ ] **HouseholdPlan** — id, householdId, planDate, type (enum), events[], tasks[], deadlines[], checklists[], risks[], unassignedItems[], changes[], completedItems[], openItems[], generatedSummary, createdAt
-- [ ] **Completion** — id, householdId, relatedObjectType, relatedObjectId, completedBy, completedAt, method, notes, evidenceAttachment, confirmationStatus
+- [x] **DecisionStatus** — id, extractedItemId, status (enum), decidedBy, decidedAt, editedFields[], dismissalReason, snoozeUntil, notes
+- [x] **Event** — id, householdId, title, affectedMemberId, startDateTime, endDateTime, location (LocationRef), owner (OwnerRef), relatedSourceId, relatedTasks[], relatedChecklist, relatedRequiredItems[], relatedPayment, relatedForm, recurrence, confidenceLevel, changeHistory[], reminderSettings, status (enum), createdAt, updatedAt
+- [x] **Task** — id, householdId, title, description, affectedMemberId, ownerId, dueDate, dueTime, priority (enum), relatedEventId, relatedSourceId, relatedFormId, relatedPaymentId, completionStatus, reminderSettings, status (enum), createdAt, updatedAt
+- [x] **Deadline** — id, householdId, title, dueDateTime, affectedMemberId, ownerId, relatedTaskId, relatedFormId, relatedPaymentId, relatedEventId, relatedSourceId, urgencyLevel (enum), reminderSchedule, status (enum), createdAt
+- [x] **RequiredItem** — id, householdId, name, quantity, affectedMemberId, relatedEventId, relatedChecklistId, relatedSourceId, ownerId, neededByDateTime, packedStatus (enum), category (enum), isRecurring, suggestedBySystem, confidence, createdAt
+- [x] **Checklist** — id, householdId, title, type (enum), affectedMemberId, relatedEventId, relatedRoutineId, items[] (embedded), ownerId, date, completionStatus, createdManually, createdAt, updatedAt
+- [x] **Form** — id, householdId, title, affectedMemberId, sourceMessageId, relatedEventId, relatedDeadlineId, ownerId, requiredAction (enum), submissionMethod, dueDate, status (enum), attachmentUrl, reminderSettings, createdAt, updatedAt
+- [x] **Payment** — id, householdId, title, amount, currency, affectedMemberId, relatedEventId, relatedSourceId, relatedDeadlineId, ownerId, paymentMethod, paymentLink, dueDate, status (enum), createdAt, updatedAt
+- [x] **Location** — id, householdId, name, address, type (enum), linkedMembers[], linkedRoutines[], linkedEvents[], travelNotes, defaultTravelTime, confidence, createdAt
+- [x] **Owner** — id, householdId, personId, assignedObjectType, assignedObjectId, assignedBy, assignedAt, status (enum), completionConfirmation, escalationStatus
+- [x] **Reminder** — id, householdId, relatedObjectType, relatedObjectId, recipientId, reminderTime, type (enum), message, status (enum), channel, createdAt
+- [x] **Change** — id, householdId, relatedObjectType, relatedObjectId, sourceMessageId, previousValue, newValue, changeType (enum), detectedAt, confidenceLevel, impactLevel (enum), reviewStatus (enum)
+- [x] **Risk** — id, householdId, title, description, affectedMemberId, relatedObjects[], type (enum), severity (enum), suggestedAction, ownerId, status (enum), createdAt, resolvedAt
+- [x] **Routine** — id, householdId, name, affectedMemberId, type (enum), frequency, commonLocation, commonItems[], defaultOwnerId, defaultChecklist, linkedEvents[], confidence, lastUsedDate, createdAt
+- [x] **HouseholdPlan** — id, householdId, planDate, type (enum), events[], tasks[], deadlines[], checklists[], risks[], unassignedItems[], changes[], completedItems[], openItems[], generatedSummary, createdAt
+- [x] **Completion** — id, householdId, relatedObjectType, relatedObjectId, completedBy, completedAt, method, notes, evidenceAttachment, confirmationStatus
 
 ### 1.4 Repository Layer
 
