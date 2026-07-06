@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { initializeApp, cert } = require('firebase-admin/app');
+const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
 
@@ -10,6 +10,8 @@ const db = getFirestore();
 const storage = getStorage();
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Health check
@@ -18,22 +20,26 @@ app.get('/', (req, res) => {
 });
 
 /**
- * SendGrid Inbound Parse webhook endpoint
+ * Resend Inbound webhook endpoint
  * Receives forwarded emails and stores them as Source Messages in Firestore
  * 
- * SendGrid sends a multipart/form-data POST with:
+ * Resend sends a JSON POST with:
  * - from: sender email
  * - to: recipient (our alias, e.g. familyname@nabboapp.com)
  * - subject: email subject
  * - text: plain text body
  * - html: HTML body
- * - attachments: number of attachments
- * - attachment1, attachment2, etc: file attachments
+ * - attachments: array of { filename, content (base64), content_type }
  */
 app.post('/inbound', upload.any(), async (req, res) => {
   try {
-    const { from, to, subject, text, html } = req.body;
-    const attachments = req.files || [];
+    const body = req.body;
+    const from = body.from;
+    const to = body.to;
+    const subject = body.subject;
+    const text = body.text;
+    const html = body.html;
+    const attachments = body.attachments || [];
 
     console.log(`Received email from: ${from}, to: ${to}, subject: ${subject}`);
 
@@ -46,7 +52,6 @@ app.post('/inbound', upload.any(), async (req, res) => {
 
     if (!household) {
       console.log(`No household found for alias: ${toAddress}`);
-      // Still return 200 so SendGrid doesn't retry
       return res.status(200).send('No household found for this alias');
     }
 
@@ -93,7 +98,6 @@ app.post('/inbound', upload.any(), async (req, res) => {
     res.status(200).send('OK');
   } catch (error) {
     console.error('Error processing inbound email:', error);
-    // Return 200 to prevent SendGrid retries on our errors
     res.status(200).send('Error processed');
   }
 });
@@ -103,6 +107,8 @@ app.post('/inbound', upload.any(), async (req, res) => {
  */
 function extractEmail(str) {
   if (!str) return '';
+  if (typeof str === 'object' && str.address) return str.address.toLowerCase();
+  if (typeof str !== 'string') return '';
   const match = str.match(/<(.+?)>/);
   if (match) return match[1].toLowerCase();
   return str.trim().toLowerCase();
@@ -134,11 +140,11 @@ function buildContent({ from, subject, text, html }) {
     content += `Subject: ${subject}\n`;
   }
   if (from) {
-    content += `From: ${from}\n`;
+    const sender = typeof from === 'string' ? from : from.address || JSON.stringify(from);
+    content += `From: ${sender}\n`;
   }
   content += '\n---\n\n';
 
-  // Prefer plain text, fall back to HTML stripped of tags
   if (text) {
     content += text;
   } else if (html) {
@@ -150,20 +156,22 @@ function buildContent({ from, subject, text, html }) {
 
 /**
  * Upload attachment to Cloud Storage
+ * Resend sends attachments as { filename, content (base64), content_type }
  */
-async function uploadAttachment(householdId, file) {
+async function uploadAttachment(householdId, attachment) {
   try {
     const bucket = storage.bucket();
-    const filename = `households/${householdId}/attachments/${Date.now()}-${file.originalname}`;
+    const filename = `households/${householdId}/attachments/${Date.now()}-${attachment.filename}`;
     const blob = bucket.file(filename);
 
-    await blob.save(file.buffer, {
+    const buffer = Buffer.from(attachment.content, 'base64');
+
+    await blob.save(buffer, {
       metadata: {
-        contentType: file.mimetype,
+        contentType: attachment.content_type,
       },
     });
 
-    // Make accessible via signed URL (valid for 7 days)
     const [url] = await blob.getSignedUrl({
       action: 'read',
       expires: Date.now() + 7 * 24 * 60 * 60 * 1000,

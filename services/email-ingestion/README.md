@@ -1,34 +1,36 @@
 # Nabbo Email Ingestion Service
 
-Cloud Run service that receives forwarded emails via SendGrid Inbound Parse and stores them as Source Messages in Firestore.
+Cloud Run service that receives forwarded emails via Resend Inbound Webhooks and stores them as Source Messages in Firestore.
 
 ## How it works
 
 1. Parent forwards an email to `familyname@nabboapp.com`
-2. SendGrid receives the email (via MX records)
-3. SendGrid POSTs the email content to this Cloud Run service
+2. Resend receives the email (via MX records on nabboapp.com)
+3. Resend POSTs the email content to this Cloud Run service webhook
 4. Service finds the household by email alias
 5. Service creates a Source Message in Firestore
 6. AI extraction pipeline processes it (Phase 3)
 
 ## Setup
 
-### 1. SendGrid Inbound Parse
+### 1. Resend Inbound
 
-1. Create a SendGrid account at https://sendgrid.com
-2. Go to Settings → Inbound Parse
-3. Add a host/domain: `nabboapp.com`
-4. Set the URL to your Cloud Run service URL: `https://email-ingestion-XXXXX.run.app/inbound`
-5. Check "POST the raw, full MIME message" → **OFF**
-6. Check "Check incoming emails for spam" → optional
+1. Go to https://resend.com → Sign up / Log in
+2. Go to **Domains** → Add `nabboapp.com` and verify it
+3. Go to **Webhooks** → Create a webhook
+4. Set the endpoint URL to your Cloud Run service: `https://email-ingestion-XXXXX.run.app/inbound`
+5. Select the event: `email.received`
 
 ### 2. DNS Records
 
-Add these MX records to your `nabboapp.com` domain:
+Add these records to your `nabboapp.com` domain (Resend will provide the exact values during domain verification):
 
 | Type | Host | Value | Priority |
 |------|------|-------|----------|
-| MX | @ | mx.sendgrid.net | 10 |
+| MX | inbound | feedback-smtp.us-east-1.amazonses.com | 10 |
+| TXT | @ | (Resend verification TXT record) | - |
+
+Note: Resend uses AWS SES under the hood. The exact MX values will be shown in the Resend dashboard during setup.
 
 ### 3. Deploy to Cloud Run
 
@@ -40,9 +42,9 @@ gcloud run deploy email-ingestion \
   --project nabbo-app-4d98a
 ```
 
-### 4. Update Household Email Aliases
+### 4. Household Email Aliases
 
-When a household is created, their email alias should be set to:
+When a household is created, their email alias is set to:
 `householdname@nabboapp.com`
 
 ## Local Development
@@ -55,10 +57,14 @@ npm run dev
 Test with curl:
 ```bash
 curl -X POST http://localhost:8080/inbound \
-  -F "from=school@example.com" \
-  -F "to=myfamily@nabboapp.com" \
-  -F "subject=School Trip Friday" \
-  -F "text=Dear parents, Adam's class will visit the museum on Friday."
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "school@example.com",
+    "to": "myfamily@nabboapp.com",
+    "subject": "School Trip Friday",
+    "text": "Dear parents, Adam'\''s class will visit the museum on Friday.",
+    "attachments": []
+  }'
 ```
 
 ## Environment
