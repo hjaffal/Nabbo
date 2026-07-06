@@ -1,7 +1,7 @@
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
-const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenAI } = require('@google/genai');
 
 initializeApp();
 const db = getFirestore();
@@ -9,8 +9,11 @@ const db = getFirestore();
 const PROJECT_ID = 'nabbo-app-4d98a';
 const LOCATION = 'europe-west1';
 
-const vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
-const model = vertexAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+const genai = new GoogleGenAI({
+  vertexai: true,
+  project: PROJECT_ID,
+  location: LOCATION,
+});
 
 /**
  * Triggered when a new Source Message is created.
@@ -49,9 +52,11 @@ exports.extractSourceMessage = onDocumentCreated(
       const prompt = buildExtractionPrompt(message.originalContent, familyMembers);
 
       // Call Gemini
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const text = response.candidates[0].content.parts[0].text;
+      const result = await genai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: prompt,
+      });
+      const text = result.text;
 
       // Parse the JSON response
       const extracted = parseExtractionResponse(text);

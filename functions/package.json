@@ -13,6 +13,6 @@
   "dependencies": {
     "firebase-admin": "^13.0.2",
     "firebase-functions": "^6.3.0",
-    "@google-cloud/vertexai": "^1.9.2"
+    "@google/genai": "^1.0.0"
   }
 }
