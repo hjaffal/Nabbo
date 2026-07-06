@@ -33,6 +33,11 @@ ios/Runner/GeneratedPluginRegistrant.*
 *.g.dart
 *.gr.dart
 
+# Firebase config (contains API keys)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+
 # Misc
 *.log
 .DS_Store
