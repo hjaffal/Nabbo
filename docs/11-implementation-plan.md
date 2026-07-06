@@ -18,45 +18,45 @@ Each phase builds on the previous. The goal is to reach a testable core loop (ca
 
 ### 1.1 Project Infrastructure
 
-- [ ] Flutter project structure (clean architecture, feature-first)
+- [x] Flutter project structure (clean architecture, feature-first)
   - `lib/core/` — constants, extensions, l10n, routing, theme, utils, widgets
   - `lib/features/` — auth, onboarding, capture, review, today, settings, household
   - Each feature: `data/`, `domain/`, `presentation/`
-- [ ] Riverpod setup with code generation (riverpod_generator + riverpod_annotation)
+- [x] Riverpod setup with code generation (riverpod_generator + riverpod_annotation)
 - [ ] Freezed models with JSON serialization for all 20 data objects
-- [ ] Go Router navigation with auth guards and redirect logic
-- [ ] Environment configuration (dev, staging, production)
-- [ ] Error handling infrastructure (global error boundary, crash reporting setup)
-- [ ] Logging infrastructure (structured logs for debugging)
+- [x] Go Router navigation with auth guards and redirect logic
+- [x] Environment configuration (dev, staging, production)
+- [x] Error handling infrastructure (global error boundary, crash reporting setup)
+- [x] Logging infrastructure (structured logs for debugging)
 
 ### 1.2 Firebase Setup
 
-- [ ] Firebase project creation (iOS + Android + web console)
-- [ ] Firebase Auth integration
+- [x] Firebase project creation (iOS + Android + web console)
+- [x] Firebase Auth integration
   - Email/password authentication
   - Auth state persistence
   - Auth state provider (Riverpod)
   - Auth guard for protected routes
   - Password reset flow
   - Account deletion flow
-- [ ] Firestore configuration
+- [x] Firestore configuration
   - Security rules (household-level isolation)
   - Offline persistence enabled
   - Composite indexes for common queries
-- [ ] Cloud Storage configuration
+- [x] Cloud Storage configuration
   - Bucket structure: `sources/{householdId}/{sourceMessageId}/`
   - Upload/download helpers
   - File size limits and validation
-- [ ] FCM initial setup (token registration, background handler stub)
+- [x] FCM initial setup (token registration, background handler stub)
 
 ### 1.3 Data Models (All 20 Core Objects)
 
 Each model uses Freezed + JSON serialization + Firestore converters.
 
-- [ ] **Household** — id, name, primaryUserId, members[], timezone, defaultLanguage, notificationPreferences, emailAlias, status, createdAt, updatedAt
-- [ ] **FamilyMember** — id, householdId, name, role (enum), ageGroup, relationship, contactMethod, permissions, defaultResponsibilities[], linkedRoutines[], color, status
-- [ ] **SourceMessage** — id, householdId, submittedBy, inputMethod (enum), originalContent, attachmentUrls[], attachmentType, sourceApp, receivedAt, processedAt, processingStatus (enum), extractedText, confidenceSummary, linkedExtractedItems[], privacyStatus
-- [ ] **ExtractedItem** — id, householdId, sourceMessageId, affectedMemberId, itemType (enum), extractedSummary, detectedFields (map), confidenceLevel (enum), uncertainFields[], suggestedNextStep, reviewStatus (enum), createdAt
+- [x] **Household** — id, name, primaryUserId, members[], timezone, defaultLanguage, notificationPreferences, emailAlias, status, createdAt, updatedAt
+- [x] **FamilyMember** — id, householdId, name, role (enum), ageGroup, relationship, contactMethod, permissions, defaultResponsibilities[], linkedRoutines[], color, status
+- [x] **SourceMessage** — id, householdId, submittedBy, inputMethod (enum), originalContent, attachmentUrls[], attachmentType, sourceApp, receivedAt, processedAt, processingStatus (enum), extractedText, confidenceSummary, linkedExtractedItems[], privacyStatus
+- [x] **ExtractedItem** — id, householdId, sourceMessageId, affectedMemberId, itemType (enum), extractedSummary, detectedFields (map), confidenceLevel (enum), uncertainFields[], suggestedNextStep, reviewStatus (enum), createdAt
 - [ ] **DecisionStatus** — id, extractedItemId, status (enum), decidedBy, decidedAt, editedFields[], dismissalReason, snoozeUntil, notes
 - [ ] **Event** — id, householdId, title, affectedMemberId, startDateTime, endDateTime, location (LocationRef), owner (OwnerRef), relatedSourceId, relatedTasks[], relatedChecklist, relatedRequiredItems[], relatedPayment, relatedForm, recurrence, confidenceLevel, changeHistory[], reminderSettings, status (enum), createdAt, updatedAt
 - [ ] **Task** — id, householdId, title, description, affectedMemberId, ownerId, dueDate, dueTime, priority (enum), relatedEventId, relatedSourceId, relatedFormId, relatedPaymentId, completionStatus, reminderSettings, status (enum), createdAt, updatedAt
@@ -77,10 +77,10 @@ Each model uses Freezed + JSON serialization + Firestore converters.
 ### 1.4 Repository Layer
 
 - [ ] Base repository abstract class with CRUD operations
-- [ ] **HouseholdRepository** — create, get, update, delete, getByUserId, updateEmailAlias, updateNotificationPrefs
-- [ ] **FamilyMemberRepository** — create, getAll (by household), get, update, delete, getByRole
-- [ ] **SourceMessageRepository** — create, getAll (by household, paginated), get, updateStatus, getByProcessingStatus, getRecent
-- [ ] **ExtractedItemRepository** — create, getAll (by household), get, update, getPendingReview, getBySourceMessage, getByUrgency
+- [x] **HouseholdRepository** — create, get, update, delete, getByUserId, updateEmailAlias, updateNotificationPrefs
+- [x] **FamilyMemberRepository** — create, getAll (by household), get, update, delete, getByRole
+- [x] **SourceMessageRepository** — create, getAll (by household, paginated), get, updateStatus, getByProcessingStatus, getRecent
+- [x] **ExtractedItemRepository** — create, getAll (by household), get, update, getPendingReview, getBySourceMessage, getByUrgency
 - [ ] **EventRepository** — create, getAll, get, update, delete, getByDate, getByMember, getUpcoming, getToday
 - [ ] **TaskRepository** — create, getAll, get, update, delete, getByDueDate, getByOwner, getByStatus, getOverdue
 - [ ] **DeadlineRepository** — create, getAll, get, update, getDueSoon, getOverdue, getByOwner
@@ -126,23 +126,23 @@ Each model uses Freezed + JSON serialization + Firestore converters.
 
 ### 1.6 Authentication Flow
 
-- [ ] Login screen (email + password)
-- [ ] Registration screen (email + password + name)
-- [ ] Password reset screen
-- [ ] Auth state listener provider
-- [ ] Auto-redirect: unauthenticated → login, authenticated + no household → onboarding, authenticated + household → home
-- [ ] Logout functionality
-- [ ] Account deletion with data cleanup confirmation
+- [x] Login screen (email + password)
+- [x] Registration screen (email + password + name)
+- [x] Password reset screen
+- [x] Auth state listener provider
+- [x] Auto-redirect: unauthenticated → login, authenticated + no household → onboarding, authenticated + household → home
+- [x] Logout functionality
+- [x] Account deletion with data cleanup confirmation
 
 ### 1.7 Onboarding Flow (7 screens)
 
-- [ ] **Welcome screen** — "Don't remember it. Nabbo it." + value prop + CTA to set up household
-- [ ] **Household setup** — household name (required), timezone (auto-detect + manual), default language (required)
-- [ ] **Add children** — child name (required), age group (optional), school (optional), common activities (optional); add multiple; skip allowed
-- [ ] **Add other people** — second parent, caregiver, grandparent labels; optional; these are labels not accounts in v1
-- [ ] **Email alias screen** — show generated alias (`familyname@nabbo.app`), copy button, explain forwarding
-- [ ] **Sharing explanation** — explain how to use mobile share sheet with visual guidance
-- [ ] **First capture prompt** — 3 options: share something now, forward an email, type a quick note → onboarding ends with action
+- [x] **Welcome screen** — "Don't remember it. Nabbo it." + value prop + CTA to set up household
+- [x] **Household setup** — household name (required), timezone (auto-detect + manual), default language (required)
+- [x] **Add children** — child name (required), age group (optional), school (optional), common activities (optional); add multiple; skip allowed
+- [x] **Add other people** — second parent, caregiver, grandparent labels; optional; these are labels not accounts in v1
+- [x] **Email alias screen** — show generated alias (`familyname@nabbo.app`), copy button, explain forwarding
+- [x] **Sharing explanation** — explain how to use mobile share sheet with visual guidance
+- [x] **First capture prompt** — 3 options: share something now, forward an email, type a quick note → onboarding ends with action
 
 Acceptance criteria:
 - User can complete onboarding in under 2 minutes
@@ -152,17 +152,17 @@ Acceptance criteria:
 
 ### 1.8 Navigation Shell & Settings
 
-- [ ] Bottom navigation: Today, Review, Settings (3 tabs)
-- [ ] App shell with StatefulShellRoute (preserves state between tabs)
-- [ ] Settings screen sections:
+- [x] Bottom navigation: Today, Review, Settings (3 tabs)
+- [x] App shell with StatefulShellRoute (preserves state between tabs)
+- [x] Settings screen sections:
   - Household details (name, timezone, language)
   - Family members (list, add, edit, remove)
   - Email alias (display, copy)
   - Notifications (category toggles, quiet hours, brief timing)
   - Privacy (data deletion, source message management)
   - Account (logout, delete account)
-- [ ] Family member detail/edit screen
-- [ ] Notification preferences screen
+- [x] Family member detail/edit screen
+- [x] Notification preferences screen
 
 ### Phase 1 Deliverable
 
@@ -180,30 +180,30 @@ App launches. User can sign up, complete onboarding, create household with membe
 
 ### 2.1 Free Text Capture
 
-- [ ] Capture FAB (floating action button) on Today and Review screens
-- [ ] Free text input screen:
+- [x] Capture FAB (floating action button) on Today and Review screens
+- [x] Free text input screen:
   - Text field with multi-line support
   - Optional: select affected family member
   - Optional: add a note/context
   - Submit button → "Send to Nabbo"
-- [ ] Create SourceMessage in Firestore on submit (inputMethod: freeText, processingStatus: received)
-- [ ] Show confirmation: "Captured. Nabbo will review this."
-- [ ] Processing state indicator in recent captures list
+- [x] Create SourceMessage in Firestore on submit (inputMethod: freeText, processingStatus: received)
+- [x] Show confirmation: "Captured. Nabbo will review this."
+- [x] Processing state indicator in recent captures list
 
 ### 2.2 Voice Capture
 
-- [ ] Voice input button (from capture FAB menu)
-- [ ] Audio recording UI:
+- [x] Voice input button (from capture FAB menu)
+- [x] Audio recording UI:
   - Record/stop button with visual waveform/timer
   - Playback before submit
   - Re-record option
 - [ ] Upload audio to Cloud Storage (`sources/{householdId}/{sourceId}/audio.m4a`)
-- [ ] Create SourceMessage (inputMethod: voice, processingStatus: received, attachmentUrls: [audioUrl])
+- [x] Create SourceMessage (inputMethod: voice, processingStatus: received, attachmentUrls: [audioUrl])
 - [ ] Cloud Function trigger: detect voice source → call Google Speech-to-Text API
 - [ ] Store transcript back on SourceMessage.extractedText
 - [ ] Update processingStatus to "extracting" after transcription
-- [ ] Show transcript in app (editable before final submit, or review after)
-- [ ] Error handling: transcription failure → allow manual text entry fallback
+- [x] Show transcript in app (editable before final submit, or review after)
+- [x] Error handling: transcription failure → allow manual text entry fallback
 
 ### 2.3 Mobile Share Extension
 
@@ -227,15 +227,15 @@ App launches. User can sign up, complete onboarding, create household with membe
 - [ ] Handle extension lifecycle (completion, cancellation, errors)
 
 #### Android Share Target
-- [ ] Configure intent-filter in AndroidManifest.xml for:
+- [x] Configure intent-filter in AndroidManifest.xml for:
   - text/plain
   - image/* (jpeg, png, gif, webp)
   - application/pdf
   - */* (general file sharing)
-- [ ] Handle incoming intents in Kotlin/Flutter bridge
-- [ ] receive_sharing_intent plugin integration
-- [ ] Same UI flow as iOS: preview → optional child → optional note → send
-- [ ] Create SourceMessage and upload attachments
+- [x] Handle incoming intents in Kotlin/Flutter bridge
+- [x] receive_sharing_intent plugin integration
+- [x] Same UI flow as iOS: preview → optional child → optional note → send
+- [x] Create SourceMessage and upload attachments
 
 #### Shared Logic
 - [ ] Capture confirmation screen (shared between all methods):
@@ -249,8 +249,8 @@ App launches. User can sign up, complete onboarding, create household with membe
 
 ### 2.4 Email Forwarding Service
 
-- [ ] Custom domain setup (`nabbo.app` or subdomain for inbound email)
-- [ ] Cloud Run email ingestion service:
+- [x] Custom domain setup (`nabbo.app` or subdomain for inbound email)
+- [x] Cloud Run email ingestion service:
   - Receive inbound emails (via SendGrid Inbound Parse, Mailgun, or Cloud Functions for Firebase email trigger)
   - Parse email: sender, subject, body (HTML → plain text), date, attachments
   - Extract relevant text from HTML email body
@@ -258,7 +258,7 @@ App launches. User can sign up, complete onboarding, create household with membe
   - Store email body + metadata as SourceMessage (inputMethod: emailForwarding)
   - Upload attachments to Cloud Storage (PDFs, images, documents)
   - Set processingStatus: received
-- [ ] Unique email alias generation per household:
+- [x] Unique email alias generation per household:
   - Generate from household name (slug) + random suffix
   - Store alias on Household document
   - Validate uniqueness
@@ -268,7 +268,7 @@ App launches. User can sign up, complete onboarding, create household with membe
   - Reject oversized emails (>25MB)
   - Reject unsupported attachment types
   - Rate limiting per household
-- [ ] Error handling:
+- [x] Error handling:
   - Invalid alias → bounce or silent discard
   - Processing failure → store raw email, mark as failed, allow retry
   - No household found → log and discard
@@ -295,10 +295,10 @@ App launches. User can sign up, complete onboarding, create household with membe
 
 ### 2.6 Processing Status UI
 
-- [ ] Recent captures list (accessible from Today or dedicated section):
+- [x] Recent captures list (accessible from Today or dedicated section):
   - Show last N captured items with status
   - Status indicators: processing (spinner), found (badge count), no action, error
-- [ ] Status messages per state:
+- [x] Status messages per state:
   - Received: "Nabbo is reading this."
   - Processing: "Processing your content..."
   - Extracting: "Looking for family actions..."
@@ -307,7 +307,7 @@ App launches. User can sign up, complete onboarding, create household with membe
   - Failed: "We could not process this. Try again or add manually."
 - [ ] Tap on completed → navigate to Review Card(s)
 - [ ] Tap on failed → options: retry, add manually, dismiss
-- [ ] Real-time status updates via Firestore listener
+- [x] Real-time status updates via Firestore listener
 
 ### 2.7 Capture Analytics & Tracking
 
@@ -332,7 +332,7 @@ Parent can send content to Nabbo via all 4 methods: free text, voice, mobile sha
 
 ### 3.1 Extraction Prompt Engineering
 
-- [ ] System prompt design:
+- [x] System prompt design:
   - Role: "You are a family household operations assistant..."
   - Input context: source text, input method, language detected
   - Household context injection: family member names + ages, existing approved events (next 14 days), known locations, known routines
