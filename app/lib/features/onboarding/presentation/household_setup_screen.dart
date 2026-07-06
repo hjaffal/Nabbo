@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/timezones.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/timezone_search_sheet.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 
@@ -23,16 +25,7 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
   String _language = 'en';
   bool _isLoading = false;
 
-  static const _timezones = [
-    'Europe/London',
-    'Europe/Paris',
-    'Europe/Berlin',
-    'Europe/Madrid',
-    'America/New_York',
-    'America/Chicago',
-    'America/Los_Angeles',
-    'Asia/Dubai',
-  ];
+  static const _timezones = AppTimezones.all;
 
   static const _languages = {
     'en': 'English',
@@ -46,6 +39,24 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
     _nameController.dispose();
     _parentNameController.dispose();
     super.dispose();
+  }
+
+  void _showTimezonePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => TimezoneSearchSheet(
+        timezones: _timezones,
+        selected: _timezone,
+        onSelected: (tz) {
+          setState(() => _timezone = tz);
+          Navigator.pop(ctx);
+        },
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -136,14 +147,18 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    DropdownButtonFormField<String>(
-                      initialValue: _timezone,
-                      decoration: const InputDecoration(labelText: 'Timezone'),
-                      items: _timezones
-                          .map((tz) =>
-                              DropdownMenuItem(value: tz, child: Text(tz)))
-                          .toList(),
-                      onChanged: (v) => setState(() => _timezone = v!),
+                    GestureDetector(
+                      onTap: () => _showTimezonePicker(context),
+                      child: AbsorbPointer(
+                        child: TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'Timezone',
+                            hintText: 'Select timezone',
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                          ),
+                          controller: TextEditingController(text: _timezone),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
 
