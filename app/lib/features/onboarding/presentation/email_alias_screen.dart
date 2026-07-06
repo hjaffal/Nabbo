@@ -34,7 +34,7 @@ class _EmailAliasScreenState extends ConsumerState<EmailAliasScreen> {
           .toLowerCase()
           .replaceAll(RegExp(r'[^a-z0-9]'), '')
           .substring(0, household.name.length.clamp(0, 20));
-      final emailAlias = '$alias@nabbo.app';
+      final emailAlias = '$alias@nabboapp.com';
 
       await repo.updateHousehold(household.copyWith(emailAlias: emailAlias));
 
