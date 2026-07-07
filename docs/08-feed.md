@@ -51,8 +51,9 @@ Pending review items appear at the top with clear "Review" badges so the parent 
 ## Feed Structure
 
 ### Header
-- Greeting (time-based: Good morning / Good afternoon / Good evening)
+- Greeting (time-based: Good morning / Good afternoon / Good evening), user name
 - "Your family feed"
+- **Weather widget** (top-right): current temperature + weather icon, based on household location (city/country). Uses OpenWeatherMap API.
 
 ### Content Sections (top to bottom)
 
@@ -102,6 +103,16 @@ Each date group has a pill-shaped header:
 | Source message (analyzing) | Nothing (still processing) |
 | `pendingReview` item | Review Detail Screen (full fields, approve/edit/delete) |
 | `confirmed` / `completed` / `cancelled` item | Item Detail Screen (full fields, edit/mark done/cancel) |
+
+### Card Swipe Behavior
+
+- **Swipe left** on any item → sets `status: hidden` (removes from Feed)
+- Shows a grey background with "Hide" icon while swiping
+- Brief undo snackbar after dismissal
+- Works on: confirmed, completed, and cancelled items
+- Swipe disabled on `pendingReview` items (must review first)
+- Swipe disabled on source message cards (still processing)
+- Hidden items are not deleted — they can be recovered from Settings or history (future)
 
 ---
 

@@ -4,10 +4,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/member_colors.dart';
+import '../../../core/services/weather_service.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
@@ -133,14 +135,27 @@ class _FeedContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${_greeting()}, $userName',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: AppColors.textSecondary)),
-                      const SizedBox(height: 4),
-                      Text('Your family feed',
-                          style: Theme.of(context).textTheme.headlineMedium),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${_greeting()}, $userName',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(color: AppColors.textSecondary)),
+                                const SizedBox(height: 4),
+                                Text('Your family feed',
+                                    style: Theme.of(context).textTheme.headlineMedium),
+                              ],
+                            ),
+                          ),
+                          _WeatherWidget(householdId: householdId),
+                        ],
+                      ),
                       const SizedBox(height: AppSpacing.xl),
                     ],
                   ),
@@ -177,8 +192,7 @@ class _FeedContent extends StatelessWidget {
                           Padding(
                             padding:
                                 const EdgeInsets.only(bottom: AppSpacing.md),
-                            child: _FeedCard(
-                                entry: entry, householdId: householdId, memberColors: memberColors),
+                            child: _buildSwipeable(context, entry, householdId, memberColors),
                           ),
                         ],
                       );
@@ -202,6 +216,66 @@ class _FeedContent extends StatelessWidget {
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  Widget _buildSwipeable(BuildContext context, FeedEntry entry, String householdId, Map<String, String> memberColors) {
+    // Allow swipe on confirmed and cancelled items (not pending, not source)
+    final canSwipe = !entry.isSource &&
+        !entry.isPending &&
+        entry.item != null;
+
+    if (!canSwipe) {
+      return _FeedCard(entry: entry, householdId: householdId, memberColors: memberColors);
+    }
+
+    return Dismissible(
+      key: Key(entry.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        decoration: BoxDecoration(
+          color: AppColors.textMuted.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Hide', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+            const SizedBox(width: 6),
+            Icon(Icons.visibility_off_rounded, color: AppColors.textMuted, size: 20),
+          ],
+        ),
+      ),
+      onDismissed: (_) {
+        final itemId = entry.item!.id;
+        final previousStatus = entry.feedStatus;
+        FirebaseFirestore.instance
+            .collection('households')
+            .doc(householdId)
+            .collection('items')
+            .doc(itemId)
+            .update({'status': 'hidden', 'updatedAt': Timestamp.now()});
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${entry.title} hidden'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () {
+                FirebaseFirestore.instance
+                    .collection('households')
+                    .doc(householdId)
+                    .collection('items')
+                    .doc(itemId)
+                    .update({'status': previousStatus, 'updatedAt': Timestamp.now()});
+              },
+            ),
+          ),
+        );
+      },
+      child: _FeedCard(entry: entry, householdId: householdId, memberColors: memberColors),
+    );
   }
 
   bool _isSameDay(DateTime? a, DateTime? b) {
@@ -239,8 +313,8 @@ class _FeedContent extends StatelessWidget {
       for (final doc in snapshot.docs) {
         try {
           final item = ItemModel.fromFirestore(doc);
-          // Hide completed items from feed (cancelled items stay visible)
-          if (item.status == ItemStatus.completed) continue;
+          // Hide completed and hidden items from feed (cancelled items stay visible)
+          if (item.status == ItemStatus.completed || item.status == ItemStatus.hidden) continue;
           // Expand recurring items
           if (item.recurrence != null && item.status == ItemStatus.confirmed) {
             entries.addAll(_expandRecurring(item));
@@ -793,6 +867,99 @@ class _EmptyState extends StatelessWidget {
                 textAlign: TextAlign.center),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// --- Weather Widget ---
+class _WeatherWidget extends StatefulWidget {
+  final String householdId;
+  const _WeatherWidget({required this.householdId});
+
+  @override
+  State<_WeatherWidget> createState() => _WeatherWidgetState();
+}
+
+class _WeatherWidgetState extends State<_WeatherWidget> {
+  WeatherData? _weather;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeather();
+  }
+
+  Future<void> _loadWeather() async {
+    try {
+      // Get city from household document
+      final doc = await FirebaseFirestore.instance
+          .collection('households')
+          .doc(widget.householdId)
+          .get();
+
+      if (!doc.exists || !mounted) return;
+
+      final data = doc.data()!;
+      final city = data['city'] as String?;
+
+      WeatherData? weather;
+
+      if (city != null && city.isNotEmpty) {
+        weather = await WeatherService.fetchByCity(city);
+      } else {
+        // Fallback: use device GPS location
+        try {
+          bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+          if (!serviceEnabled) {
+            if (mounted) setState(() => _loaded = true);
+            return;
+          }
+
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (permission == LocationPermission.always ||
+              permission == LocationPermission.whileInUse) {
+            final position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.low,
+            ).timeout(const Duration(seconds: 10));
+            weather = await WeatherService.fetchByCoords(
+                position.latitude, position.longitude);
+          }
+        } catch (_) {}
+      }
+
+      if (mounted) setState(() { _weather = weather; _loaded = true; });
+    } catch (_) {
+      if (mounted) setState(() => _loaded = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || _weather == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_weather!.emoji, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 4),
+          Text(
+            '${_weather!.temperature.round()}°',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }

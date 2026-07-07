@@ -52,7 +52,7 @@ The child chip uses the family member's assigned `color` field:
 
 - Tap pending → opens Review Detail screen
 - Tap confirmed/completed/cancelled → opens Item Detail screen
-- No swipe actions in v1
+- **Swipe left** → hides the item from Feed (sets `status: hidden`). Works on confirmed, completed, cancelled items.
 
 ---
 
@@ -286,7 +286,7 @@ Form screen for editing any item at any lifecycle stage.
 
 ```
 ┌────────────────────────────────────────────────────┐
-│  Good morning                                      │
+│  Good morning, Hassan                    🌤 22°    │
 │  Your family feed                                  │
 ├────────────────────────────────────────────────────┤
 │                                                    │

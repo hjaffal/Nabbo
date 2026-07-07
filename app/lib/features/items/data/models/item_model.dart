@@ -17,6 +17,7 @@ enum ItemStatus {
   confirmed,
   completed,
   cancelled,
+  hidden,
 }
 
 enum ItemAction {

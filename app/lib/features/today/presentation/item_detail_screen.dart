@@ -182,6 +182,7 @@ class ItemDetailScreen extends ConsumerWidget {
       ItemStatus.confirmed => ('Active', AppColors.softGreen),
       ItemStatus.completed => ('Done', AppColors.softGreen),
       ItemStatus.cancelled => ('Cancelled', AppColors.softCoral),
+      ItemStatus.hidden => ('Hidden', AppColors.textMuted),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

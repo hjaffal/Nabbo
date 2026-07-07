@@ -106,6 +106,7 @@ An Item is **everything** — from the moment AI extracts it (pending review) th
 | `confirmed` | Parent approved, part of the household plan |
 | `completed` | Action done (task finished, item packed, etc.) |
 | `cancelled` | Cancelled (event cancelled, no longer needed) |
+| `hidden` | User swiped to hide from Feed (still exists in Firestore) |
 
 ### Lifecycle
 

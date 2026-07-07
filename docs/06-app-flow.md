@@ -276,10 +276,7 @@ Fields:
 - Name (text)
 - Timezone (dropdown or auto-detect)
 - Language (dropdown)
-- **Zip code** (text, or auto-detect from GPS)
-- **City** (text, or auto-detect from GPS)
-- **Country** (text, or auto-detect from GPS)
-- "Detect location" button — uses device GPS + reverse geocoding to fill zip/city/country
+- **Location** (Google Places autocomplete — search and select an address/city. Stored as `city` in Firestore, used for weather and AI context)
 
 ---
 

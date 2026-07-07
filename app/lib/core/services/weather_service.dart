@@ -1,0 +1,85 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+/// Simple weather data from OpenWeatherMap
+class WeatherData {
+  final double temperature; // Celsius
+  final String icon; // OpenWeatherMap icon code
+  final String description; // e.g. "clear sky"
+
+  WeatherData({
+    required this.temperature,
+    required this.icon,
+    required this.description,
+  });
+
+  /// Returns a weather emoji based on icon code
+  String get emoji => switch (icon) {
+        '01d' => '☀️',
+        '01n' => '🌙',
+        '02d' || '02n' => '⛅',
+        '03d' || '03n' => '☁️',
+        '04d' || '04n' => '☁️',
+        '09d' || '09n' => '🌧️',
+        '10d' || '10n' => '🌦️',
+        '11d' || '11n' => '⛈️',
+        '13d' || '13n' => '❄️',
+        '50d' || '50n' => '🌫️',
+        _ => '🌤️',
+      };
+}
+
+/// Fetches current weather from OpenWeatherMap API
+class WeatherService {
+  // OpenWeatherMap free tier API key
+  static const _apiKey = 'dbddbba72c188444e6edcef5f4fa0268';
+
+  /// Fetch weather by city name
+  static Future<WeatherData?> fetchByCity(String city) async {
+    if (city.isEmpty) return null;
+    try {
+      final url = Uri.parse(
+          'https://api.openweathermap.org/data/2.5/weather'
+          '?q=${Uri.encodeComponent(city)}'
+          '&appid=$_apiKey'
+          '&units=metric');
+
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return _parse(json.decode(response.body));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Fetch weather by coordinates
+  static Future<WeatherData?> fetchByCoords(double lat, double lon) async {
+    try {
+      final url = Uri.parse(
+          'https://api.openweathermap.org/data/2.5/weather'
+          '?lat=$lat&lon=$lon'
+          '&appid=$_apiKey'
+          '&units=metric');
+
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return _parse(json.decode(response.body));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static WeatherData? _parse(Map<String, dynamic> data) {
+    try {
+      final main = data['main'];
+      final weather = (data['weather'] as List).first;
+      return WeatherData(
+        temperature: (main['temp'] as num).toDouble(),
+        icon: weather['icon'] as String,
+        description: weather['description'] as String,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}

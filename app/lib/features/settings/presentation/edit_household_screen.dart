@@ -1,11 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 
 import '../../../core/constants/timezones.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/place_autocomplete_field.dart';
 import '../../../core/widgets/timezone_search_sheet.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
@@ -21,14 +20,11 @@ class EditHouseholdScreen extends ConsumerStatefulWidget {
 class _EditHouseholdScreenState extends ConsumerState<EditHouseholdScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _zipCodeController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _countryController = TextEditingController();
   String _timezone = 'Europe/Berlin';
   String _language = 'en';
+  String _location = '';
   bool _isLoading = true;
   bool _isSaving = false;
-  bool _isDetecting = false;
   HouseholdModel? _household;
 
   static const _timezones = AppTimezones.all;
@@ -46,12 +42,11 @@ class _EditHouseholdScreenState extends ConsumerState<EditHouseholdScreen> {
     _loadHousehold();
   }
 
+  static const _placesApiKey = String.fromEnvironment('PLACES_API_KEY', defaultValue: 'AIzaSyBDgIsGaaUxH8mSXDbNAw6kN0qdPPTe-es');
+
   @override
   void dispose() {
     _nameController.dispose();
-    _zipCodeController.dispose();
-    _cityController.dispose();
-    _countryController.dispose();
     super.dispose();
   }
 
@@ -66,9 +61,7 @@ class _EditHouseholdScreenState extends ConsumerState<EditHouseholdScreen> {
         _nameController.text = household.name;
         _timezone = household.timezone;
         _language = household.language;
-        _zipCodeController.text = household.zipCode ?? '';
-        _cityController.text = household.city ?? '';
-        _countryController.text = household.country ?? '';
+        _location = household.city ?? '';
         _isLoading = false;
       });
     }
@@ -103,9 +96,7 @@ class _EditHouseholdScreenState extends ConsumerState<EditHouseholdScreen> {
         name: _nameController.text.trim(),
         timezone: _timezone,
         language: _language,
-        zipCode: _zipCodeController.text.trim().isEmpty ? null : _zipCodeController.text.trim(),
-        city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
-        country: _countryController.text.trim().isEmpty ? null : _countryController.text.trim(),
+        city: _location.isEmpty ? null : _location,
       ));
 
       if (mounted) {
@@ -122,51 +113,6 @@ class _EditHouseholdScreenState extends ConsumerState<EditHouseholdScreen> {
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _detectLocation() async {
-    setState(() => _isDetecting = true);
-    try {
-      // Check permission
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw Exception('Location permission denied');
-        }
-      }
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permission permanently denied. Enable in Settings.');
-      }
-
-      // Get position
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.low,
-      );
-
-      // Reverse geocode
-      final placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        setState(() {
-          _zipCodeController.text = place.postalCode ?? '';
-          _cityController.text = place.locality ?? place.subAdministrativeArea ?? '';
-          _countryController.text = place.country ?? '';
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not detect location: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isDetecting = false);
     }
   }
 
@@ -262,54 +208,13 @@ class _EditHouseholdScreenState extends ConsumerState<EditHouseholdScreen> {
                 ),
               const SizedBox(height: 32),
 
-              // Location section
-              Row(
-                children: [
-                  Text('Location',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: _isDetecting ? null : _detectLocation,
-                    icon: _isDetecting
-                        ? const SizedBox(
-                            width: 16, height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.my_location, size: 18),
-                    label: Text(_isDetecting ? 'Detecting...' : 'Detect'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
+              // Location
               LabeledField(
-                label: 'Zip / Postal code',
-                child: TextFormField(
-                  controller: _zipCodeController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. 1012',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              LabeledField(
-                label: 'City',
-                child: TextFormField(
-                  controller: _cityController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. Amsterdam',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              LabeledField(
-                label: 'Country',
-                child: TextFormField(
-                  controller: _countryController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. Netherlands',
-                  ),
+                label: 'Location',
+                child: PlaceAutocompleteField(
+                  initialValue: _location,
+                  apiKey: _placesApiKey,
+                  onChanged: (value) => _location = value,
                 ),
               ),
             ],
