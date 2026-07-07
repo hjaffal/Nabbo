@@ -37,22 +37,27 @@ class FeedItemDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(type[0].toUpperCase() + type.substring(1))),
+      appBar: AppBar(
+        title: Text(type[0].toUpperCase() + type.substring(1)),
+        actions: [
+          if (docRef != null)
+            IconButton(
+              icon: const Icon(Icons.edit_rounded),
+              onPressed: () => _openEdit(context),
+            ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with icon
+            // Header
             Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                  ),
+                  width: 52, height: 52,
+                  decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
                   child: Icon(icon, color: iconColor, size: 26),
                 ),
                 const SizedBox(width: AppSpacing.lg),
@@ -70,42 +75,17 @@ class FeedItemDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            // Status badge
-            Row(
-              children: [
-                _buildStatusBadge(context),
-              ],
-            ),
+            // Status
+            _buildStatusBadge(context),
             const SizedBox(height: AppSpacing.xl),
 
-            // Child & Owner
-            if (childName != null || ownerName != null)
-              SoftCard(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  children: [
-                    if (childName != null)
-                      _detailRow(context, 'Child', childName!),
-                    if (ownerName != null)
-                      _detailRow(context, 'Owner', ownerName!),
-                  ],
-                ),
-              ),
-
-            if (childName != null || ownerName != null)
-              const SizedBox(height: AppSpacing.lg),
-
-            // All fields from raw data
+            // All data fields
             if (rawData != null)
               SoftCard(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Details', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: AppSpacing.md),
-                    ..._buildAllFields(context),
-                  ],
+                  children: _buildAllFields(context),
                 ),
               ),
 
@@ -134,56 +114,55 @@ class FeedItemDetailScreen extends StatelessWidget {
       'paid' => ('Paid', AppColors.softGreen),
       _ => ('Active', AppColors.softGreen),
     };
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(AppSpacing.radiusPill)),
       child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
-    );
-  }
-
-  Widget _detailRow(BuildContext context, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        children: [
-          SizedBox(width: 80, child: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary))),
-          Expanded(child: Text(value, style: Theme.of(context).textTheme.bodyMedium)),
-        ],
-      ),
     );
   }
 
   List<Widget> _buildAllFields(BuildContext context) {
     if (rawData == null) return [];
-    final skip = {'householdId', 'sourceExtractedItemId', 'sourceMessageId', 'affectedMemberId', 'ownerId', 'affectedMemberName', 'ownerName', 'status', 'createdAt'};
+    final skip = {'householdId', 'sourceExtractedItemId', 'sourceMessageId', 'affectedMemberId', 'ownerId'};
 
-    return rawData!.entries
-        .where((e) => e.value != null && !skip.contains(e.key) && e.value.toString().isNotEmpty)
-        .map((e) {
+    final fields = rawData!.entries
+        .where((e) => e.value != null && !skip.contains(e.key) && e.value.toString().isNotEmpty && e.value.toString() != 'null')
+        .toList();
+
+    return fields.map((e) {
       String val;
       if (e.value is Timestamp) {
         final dt = (e.value as Timestamp).toDate();
         val = '${dt.day}/${dt.month}/${dt.year} at ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } else if (e.value is List) {
+        val = (e.value as List).join(', ');
       } else {
         val = e.value.toString();
       }
-      return _detailRow(context, _formatKey(e.key), val);
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 130,
+              child: Text(_formatKey(e.key), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            ),
+            Expanded(child: Text(val, style: Theme.of(context).textTheme.bodyMedium)),
+          ],
+        ),
+      );
     }).toList();
   }
 
   String _formatKey(String key) {
-    // camelCase to Title Case
-    return key.replaceAllMapped(RegExp(r'([A-Z])'), (m) => ' ${m.group(0)}').trim();
+    return key.replaceAllMapped(RegExp(r'([A-Z])'), (m) => ' ${m.group(0)!.toLowerCase()}').trim();
   }
 
   String _actionLabel() => switch (type) {
         'task' => 'Mark done',
         'payment' => 'Mark paid',
-        _ => 'Done',
+        _ => 'Mark complete',
       };
 
   Future<void> _markDone(BuildContext context) async {
@@ -192,9 +171,128 @@ class FeedItemDetailScreen extends StatelessWidget {
       'payment' => {'status': 'paid'},
       _ => <String, dynamic>{},
     };
-    if (update.isNotEmpty && docRef != null) {
-      await docRef!.update(update);
-    }
+    if (update.isNotEmpty && docRef != null) await docRef!.update(update);
     if (context.mounted) Navigator.pop(context);
+  }
+
+  void _openEdit(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _EditFeedItemScreen(
+          docRef: docRef!,
+          rawData: rawData ?? {},
+          type: type,
+        ),
+      ),
+    );
+  }
+}
+
+/// Edit screen — shows all fields as editable text fields
+class _EditFeedItemScreen extends StatefulWidget {
+  final DocumentReference docRef;
+  final Map<String, dynamic> rawData;
+  final String type;
+
+  const _EditFeedItemScreen({required this.docRef, required this.rawData, required this.type});
+
+  @override
+  State<_EditFeedItemScreen> createState() => _EditFeedItemScreenState();
+}
+
+class _EditFeedItemScreenState extends State<_EditFeedItemScreen> {
+  late Map<String, TextEditingController> _controllers;
+  bool _isSaving = false;
+
+  // Fields we allow editing
+  static const _editableFields = [
+    'title', 'location', 'affectedMemberName', 'ownerName',
+    'amount', 'currency', 'paymentMethod', 'paymentLink',
+    'name', 'recurrence', 'description', 'submissionMethod',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = {};
+    for (final key in _editableFields) {
+      final value = widget.rawData[key];
+      if (value != null && value is! Timestamp && value is! List) {
+        _controllers[key] = TextEditingController(text: value.toString());
+      }
+    }
+    // Always show title
+    if (!_controllers.containsKey('title') && widget.rawData.containsKey('name')) {
+      _controllers['title'] = TextEditingController(text: widget.rawData['name']?.toString() ?? '');
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+
+    final updates = <String, dynamic>{};
+    for (final entry in _controllers.entries) {
+      final newVal = entry.value.text.trim();
+      final oldVal = widget.rawData[entry.key]?.toString() ?? '';
+      if (newVal != oldVal && newVal.isNotEmpty) {
+        updates[entry.key] = newVal;
+      }
+    }
+
+    if (updates.isNotEmpty) {
+      await widget.docRef.update(updates);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
+      Navigator.pop(context);
+    }
+  }
+
+  String _formatKey(String key) {
+    return key.replaceAllMapped(RegExp(r'([A-Z])'), (m) => ' ${m.group(0)!.toLowerCase()}').trim();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit'),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : _save,
+            child: _isSaving
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Save'),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _controllers.entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              child: TextField(
+                controller: entry.value,
+                decoration: InputDecoration(
+                  labelText: _formatKey(entry.key),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
   }
 }
