@@ -55,9 +55,9 @@ class _AppShellState extends ConsumerState<AppShell> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.today_outlined),
-            selectedIcon: Icon(Icons.today),
-            label: 'Today',
+            icon: Icon(Icons.dynamic_feed_outlined),
+            selectedIcon: Icon(Icons.dynamic_feed),
+            label: 'Feed',
           ),
           NavigationDestination(
             icon: Icon(Icons.inbox_outlined),
