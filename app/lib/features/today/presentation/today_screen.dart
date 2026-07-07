@@ -120,9 +120,23 @@ class _FeedContent extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final item = items[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: _FeedCard(item: item, householdId: householdId),
+                      // Group by day
+                      final showDateHeader = index == 0 ||
+                          !_isSameDay(items[index - 1].dateTime, item.dateTime);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (showDateHeader) ...[
+                            if (index > 0) const SizedBox(height: AppSpacing.xl),
+                            _DateHeader(date: item.dateTime, isPending: item.isPending),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                            child: _FeedCard(item: item, householdId: householdId),
+                          ),
+                        ],
                       );
                     },
                     childCount: items.length,
@@ -142,6 +156,12 @@ class _FeedContent extends StatelessWidget {
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  bool _isSameDay(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   Stream<List<_FeedItem>> _buildFeedStream(DocumentReference householdRef) {
@@ -249,6 +269,46 @@ class _FeedContent extends StatelessWidget {
       };
 
   String _truncate(String s, int max) => s.length > max ? '${s.substring(0, max)}...' : s;
+}
+
+// --- Date Header ---
+class _DateHeader extends StatelessWidget {
+  final DateTime? date;
+  final bool isPending;
+  const _DateHeader({this.date, this.isPending = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isPending ? AppColors.yellowLight : AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Text(
+        isPending ? 'Needs Review' : _formatDate(date),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: isPending ? AppColors.warmYellow : null,
+            ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? d) {
+    if (d == null) return 'Undated';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final itemDay = DateTime(d.year, d.month, d.day);
+
+    if (itemDay == today) return 'Today';
+    if (itemDay == tomorrow) return 'Tomorrow';
+
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${weekdays[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
+  }
 }
 
 // --- Feed Card ---

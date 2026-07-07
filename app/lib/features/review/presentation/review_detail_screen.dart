@@ -168,7 +168,6 @@ class _ExtractedItemsList extends StatelessWidget {
       stream: db.collection('households').doc(householdId)
           .collection('extractedItems')
           .where('sourceMessageId', isEqualTo: sourceMessageId)
-          .where('reviewStatus', isEqualTo: 'pendingReview')
           .snapshots(),
       builder: (context, snapshot) {
         final docs = snapshot.data?.docs ?? [];
@@ -177,34 +176,74 @@ class _ExtractedItemsList extends StatelessWidget {
           return Column(
             children: [
               const SizedBox(height: 20),
-              Icon(Icons.check_circle_rounded, size: 48, color: AppColors.softGreen),
+              Icon(Icons.hourglass_empty_rounded, size: 48, color: AppColors.textMuted),
               const SizedBox(height: 12),
-              Text('All items reviewed', style: Theme.of(context).textTheme.titleSmall),
+              Text('No items extracted yet', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              Text('AI might still be processing. Wait a moment and check again.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary), textAlign: TextAlign.center),
             ],
           );
         }
 
+        final pendingDocs = docs.where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return data['reviewStatus'] == 'pendingReview';
+        }).toList();
+
+        final approvedDocs = docs.where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return data['reviewStatus'] != 'pendingReview';
+        }).toList();
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${docs.length} item${docs.length > 1 ? 's' : ''} extracted', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.lg),
-            ...docs.map((doc) {
-              ExtractedItemModel? item;
-              try {
-                item = ExtractedItemModel.fromFirestore(doc);
-              } catch (_) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: _ExtractedItemCard(
-                  item: item,
-                  householdId: householdId,
-                  ref: ref,
-                ),
-              );
-            }),
+            if (pendingDocs.isNotEmpty) ...[
+              Text('${pendingDocs.length} item${pendingDocs.length > 1 ? 's' : ''} to review', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.lg),
+              ...pendingDocs.map((doc) {
+                ExtractedItemModel? item;
+                try {
+                  item = ExtractedItemModel.fromFirestore(doc);
+                } catch (_) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: _ExtractedItemCard(
+                    item: item,
+                    householdId: householdId,
+                    ref: ref,
+                  ),
+                );
+              }),
+            ],
+            if (approvedDocs.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.lg),
+              Text('${approvedDocs.length} already reviewed', style: Theme.of(context).textTheme.labelMedium),
+              const SizedBox(height: AppSpacing.sm),
+              ...approvedDocs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(children: [
+                    Icon(Icons.check_circle_rounded, size: 16, color: AppColors.softGreen),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(
+                      data['operationalSummary'] ?? 'Item',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    )),
+                  ]),
+                );
+              }),
+            ],
+            if (pendingDocs.isEmpty && approvedDocs.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xl),
+              Icon(Icons.check_circle_rounded, size: 40, color: AppColors.softGreen),
+              const SizedBox(height: 8),
+              Text('All items reviewed!', style: Theme.of(context).textTheme.titleSmall),
+            ],
           ],
         );
       },
