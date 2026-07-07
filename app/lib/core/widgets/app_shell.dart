@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/capture/presentation/capture_sheet.dart';
-import '../../features/capture/presentation/voice_capture_sheet.dart';
 import '../../features/capture/presentation/image_capture_sheet.dart';
 import '../../features/capture/presentation/share_handler.dart';
 import '../theme/app_colors.dart';
@@ -142,9 +141,9 @@ class _AnimatedCaptureFabState extends State<_AnimatedCaptureFab>
               ),
             ),
 
-          // Mini FAB 3: Image (top)
+          // Mini FAB 2: Image (top — now index 1)
           _buildMiniFab(
-            index: 2,
+            index: 1,
             icon: Icons.image_rounded,
             label: 'Photo',
             color: AppColors.softGreen,
@@ -152,19 +151,6 @@ class _AnimatedCaptureFabState extends State<_AnimatedCaptureFab>
             onTap: () {
               _close();
               showImageCaptureSheet(context);
-            },
-          ),
-
-          // Mini FAB 2: Voice (middle)
-          _buildMiniFab(
-            index: 1,
-            icon: Icons.mic_rounded,
-            label: 'Voice',
-            color: AppColors.softBlue,
-            bgColor: AppColors.blueLight,
-            onTap: () {
-              _close();
-              showVoiceCaptureSheet(context);
             },
           ),
 

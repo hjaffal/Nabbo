@@ -38,17 +38,37 @@ class WeatherService {
   static Future<WeatherData?> fetchByCity(String city) async {
     if (city.isEmpty) return null;
     try {
-      final url = Uri.parse(
-          'https://api.openweathermap.org/data/2.5/weather'
-          '?q=${Uri.encodeComponent(city)}'
-          '&appid=$_apiKey'
-          '&units=metric');
+      // Try full city string first
+      var weather = await _fetchCity(city);
+      if (weather != null) return weather;
 
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        return _parse(json.decode(response.body));
+      // Fallback: try first part before comma (e.g., "Amsterdam, Netherlands" → "Amsterdam")
+      if (city.contains(',')) {
+        weather = await _fetchCity(city.split(',').first.trim());
+        if (weather != null) return weather;
       }
+
+      // Fallback: try first word only
+      final firstWord = city.split(' ').first.trim();
+      if (firstWord != city) {
+        weather = await _fetchCity(firstWord);
+      }
+      return weather;
     } catch (_) {}
+    return null;
+  }
+
+  static Future<WeatherData?> _fetchCity(String city) async {
+    final url = Uri.parse(
+        'https://api.openweathermap.org/data/2.5/weather'
+        '?q=${Uri.encodeComponent(city)}'
+        '&appid=$_apiKey'
+        '&units=metric');
+
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      return _parse(json.decode(response.body));
+    }
     return null;
   }
 

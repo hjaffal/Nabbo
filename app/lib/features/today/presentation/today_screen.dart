@@ -229,63 +229,146 @@ class _FeedContent extends StatelessWidget {
   }
 
   Widget _buildSwipeable(BuildContext context, FeedEntry entry, String householdId, Map<String, _MemberInfo> memberInfo) {
-    // Allow swipe on confirmed and cancelled items (not pending, not source)
+    // Allow swipe on confirmed items (not pending, not source, not already cancelled/hidden)
     final canSwipe = !entry.isSource &&
         !entry.isPending &&
+        entry.feedStatus == 'confirmed' &&
         entry.item != null;
 
     if (!canSwipe) {
       return _FeedCard(entry: entry, householdId: householdId, memberInfo: memberInfo);
     }
 
+    final itemId = entry.item!.id;
+
     return Dismissible(
       key: Key(entry.id),
-      direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Swipe right → show options (hide / cancel)
+          final result = await showModalBottomSheet<String>(
+            context: context,
+            builder: (ctx) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.visibility_off_rounded, color: AppColors.textMuted),
+                    title: const Text('Hide'),
+                    subtitle: const Text('Remove from feed'),
+                    onTap: () => Navigator.pop(ctx, 'hide'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.cancel_rounded, color: AppColors.softCoral),
+                    title: const Text('Cancel'),
+                    subtitle: Text(entry.isRecurring ? 'Cancel this occurrence' : 'Cancel this item'),
+                    onTap: () => Navigator.pop(ctx, 'cancel'),
+                  ),
+                  if (entry.isRecurring)
+                    ListTile(
+                      leading: Icon(Icons.block_rounded, color: AppColors.softCoral),
+                      title: const Text('Cancel entire series'),
+                      onTap: () => Navigator.pop(ctx, 'cancelAll'),
+                    ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          );
+
+          if (result == 'hide') {
+            _setStatus(householdId, itemId, 'hidden', entry.feedStatus);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('${entry.title} hidden'),
+                action: SnackBarAction(label: 'Undo', onPressed: () => _setStatus(householdId, itemId, entry.feedStatus, null)),
+              ));
+            }
+          } else if (result == 'cancel') {
+            if (entry.isRecurring && entry.occurrenceDate != null) {
+              final dateStr = '${entry.occurrenceDate!.year}-${entry.occurrenceDate!.month.toString().padLeft(2, '0')}-${entry.occurrenceDate!.day.toString().padLeft(2, '0')}';
+              FirebaseFirestore.instance.collection('households').doc(householdId).collection('items').doc(itemId).update({
+                'exceptions': FieldValue.arrayUnion([{'date': dateStr, 'status': 'cancelled'}]),
+                'updatedAt': Timestamp.now(),
+              });
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${entry.title} cancelled for this date')));
+              }
+            } else {
+              _setStatus(householdId, itemId, 'cancelled', entry.feedStatus);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('${entry.title} cancelled'),
+                  action: SnackBarAction(label: 'Undo', onPressed: () => _setStatus(householdId, itemId, entry.feedStatus, null)),
+                ));
+              }
+            }
+          } else if (result == 'cancelAll') {
+            _setStatus(householdId, itemId, 'cancelled', entry.feedStatus);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${entry.title} series cancelled')));
+            }
+          }
+          return false; // Don't dismiss — we handle state changes manually
+        } else {
+          // Swipe left → mark complete
+          return true;
+        }
+      },
       background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 24),
         decoration: BoxDecoration(
-          color: AppColors.textMuted.withValues(alpha: 0.1),
+          color: AppColors.textMuted.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Hide', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+            Icon(Icons.more_horiz_rounded, color: AppColors.textMuted, size: 22),
             const SizedBox(width: 6),
-            Icon(Icons.visibility_off_rounded, color: AppColors.textMuted, size: 20),
+            Text('Options', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
+      secondaryBackground: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        decoration: BoxDecoration(
+          color: AppColors.softGreen.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Done', style: TextStyle(color: AppColors.softGreen, fontWeight: FontWeight.w600)),
+            const SizedBox(width: 6),
+            Icon(Icons.check_circle_rounded, color: AppColors.softGreen, size: 22),
+          ],
+        ),
+      ),
+      direction: DismissDirection.horizontal,
       onDismissed: (_) {
-        final itemId = entry.item!.id;
-        final previousStatus = entry.feedStatus;
-        FirebaseFirestore.instance
-            .collection('households')
-            .doc(householdId)
-            .collection('items')
-            .doc(itemId)
-            .update({'status': 'hidden', 'updatedAt': Timestamp.now()});
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${entry.title} hidden'),
-            action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () {
-                FirebaseFirestore.instance
-                    .collection('households')
-                    .doc(householdId)
-                    .collection('items')
-                    .doc(itemId)
-                    .update({'status': previousStatus, 'updatedAt': Timestamp.now()});
-              },
-            ),
-          ),
-        );
+        // Only swipe left (endToStart) dismisses — marks as complete
+        _setStatus(householdId, itemId, 'completed', entry.feedStatus);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('${entry.title} done'),
+            action: SnackBarAction(label: 'Undo', onPressed: () => _setStatus(householdId, itemId, 'confirmed', null)),
+          ));
+        }
       },
       child: _FeedCard(entry: entry, householdId: householdId, memberInfo: memberInfo),
     );
+  }
+
+  void _setStatus(String householdId, String itemId, String status, String? _) {
+    FirebaseFirestore.instance
+        .collection('households')
+        .doc(householdId)
+        .collection('items')
+        .doc(itemId)
+        .update({'status': status, 'updatedAt': Timestamp.now()});
   }
 
   bool _isSameDay(DateTime? a, DateTime? b) {
@@ -466,9 +549,9 @@ class _FeedContent extends StatelessWidget {
     final hour = item.date?.hour ?? 0;
     final minute = item.date?.minute ?? 0;
 
-    // Parse frequency and day
+    // Parse day of week if provided
     int? targetWeekday;
-    if (rule.frequency == 'weekly' && rule.dayOfWeek != null) {
+    if (rule.dayOfWeek != null) {
       final dayNames = [
         'monday',
         'tuesday',
@@ -479,12 +562,7 @@ class _FeedContent extends StatelessWidget {
         'sunday'
       ];
       final idx = dayNames.indexOf(rule.dayOfWeek!.toLowerCase());
-      if (idx >= 0) targetWeekday = idx + 1;
-    }
-
-    if (targetWeekday == null) {
-      // Fallback: just show the item as-is
-      return [_mapItem(item)];
+      if (idx >= 0) targetWeekday = idx + 1; // 1=Mon, 7=Sun
     }
 
     // Check end date
@@ -501,39 +579,91 @@ class _FeedContent extends StatelessWidget {
       }
     }
 
-    // Determine how many weeks to expand
-    // If end date exists: expand until end date (max 52 weeks to prevent infinite)
-    // If no end date: show next 4 weeks
-    final maxWeeks = endDate != null ? 52 : 4;
+    // Generate occurrences based on frequency
+    final maxOccurrences = endDate != null ? 52 : 4;
+    List<DateTime> occurrenceDates = [];
 
-    for (int week = 0; week < maxWeeks; week++) {
-      var daysUntil = targetWeekday - today.weekday;
-      if (daysUntil < 0) daysUntil += 7;
-      final occDate = today.add(Duration(days: daysUntil + (week * 7)));
+    if (rule.frequency == 'daily') {
+      for (int i = 0; i < maxOccurrences; i++) {
+        final occDate = today.add(Duration(days: i));
+        if (endDate != null && occDate.isAfter(endDate)) break;
+        occurrenceDates.add(occDate);
+      }
+    } else if (rule.frequency == 'weekly' && targetWeekday != null) {
+      for (int week = 0; week < maxOccurrences; week++) {
+        var daysUntil = targetWeekday - today.weekday;
+        if (daysUntil < 0) daysUntil += 7;
+        final occDate = today.add(Duration(days: daysUntil + (week * 7)));
+        if (endDate != null && occDate.isAfter(endDate)) break;
+        occurrenceDates.add(occDate);
+      }
+    } else if (rule.frequency == 'biweekly' && targetWeekday != null) {
+      for (int week = 0; week < maxOccurrences; week++) {
+        var daysUntil = targetWeekday - today.weekday;
+        if (daysUntil < 0) daysUntil += 7;
+        final occDate = today.add(Duration(days: daysUntil + (week * 14)));
+        if (endDate != null && occDate.isAfter(endDate)) break;
+        occurrenceDates.add(occDate);
+      }
+    } else if (rule.frequency == 'monthly') {
+      // Monthly: find the target weekday in each month (e.g., first Monday)
+      for (int month = 0; month < maxOccurrences; month++) {
+        final targetMonth = DateTime(today.year, today.month + month, 1);
+        DateTime? occDate;
+
+        if (targetWeekday != null) {
+          // Find first occurrence of targetWeekday in this month
+          var day = targetMonth;
+          while (day.weekday != targetWeekday) {
+            day = day.add(const Duration(days: 1));
+          }
+          occDate = day;
+        } else {
+          // Monthly on a specific day (use the item's date day-of-month)
+          final dayOfMonth = item.date?.day ?? 1;
+          final daysInMonth = DateTime(targetMonth.year, targetMonth.month + 1, 0).day;
+          occDate = DateTime(targetMonth.year, targetMonth.month, dayOfMonth.clamp(1, daysInMonth));
+        }
+
+        if (occDate.isBefore(today)) continue;
+        if (endDate != null && occDate.isAfter(endDate)) break;
+        occurrenceDates.add(occDate);
+      }
+    } else {
+      // Unknown frequency — just show the item as-is
+      return [_mapItem(item)];
+    }
+
+    // Build feed entries from occurrence dates
+    for (final ex in item.exceptions) {
+      if (ex.status == 'cancelled') {
+        cancelledDates.add(ex.date);
+      }
+    }
+
+    // Build feed entries from occurrence dates
+    for (int i = 0; i < occurrenceDates.length; i++) {
+      final occDate = occurrenceDates[i];
       final occDateTime =
           DateTime(occDate.year, occDate.month, occDate.day, hour, minute);
 
-      // Check if past end date
-      if (endDate != null && occDate.isAfter(endDate)) break;
-
-      // Check if cancelled
       final dateStr =
           '${occDate.year}-${occDate.month.toString().padLeft(2, '0')}-${occDate.day.toString().padLeft(2, '0')}';
-      if (cancelledDates.contains(dateStr)) continue;
+      final isCancelledOccurrence = cancelledDates.contains(dateStr);
 
       final typeInfo = _typeVisuals(item.type);
       entries.add(FeedEntry(
-        id: '${item.id}_w$week',
+        id: '${item.id}_o$i',
         title: item.title,
         location: item.location,
         childName: item.childName,
         ownerName: item.ownerName,
         dateTime: occDateTime,
-        feedStatus: 'confirmed',
+        feedStatus: isCancelledOccurrence ? 'cancelled' : 'confirmed',
         type: item.type.name,
         icon: Icons.repeat_rounded,
-        iconColor: typeInfo.$2,
-        iconBg: typeInfo.$3,
+        iconColor: isCancelledOccurrence ? AppColors.textMuted : typeInfo.$2,
+        iconBg: isCancelledOccurrence ? AppColors.surfaceSoft : typeInfo.$3,
         item: item,
         isRecurring: true,
         occurrenceDate: occDate,
