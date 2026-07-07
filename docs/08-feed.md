@@ -27,11 +27,11 @@ households/{householdId}/items/{id}            ← shows all extracted/confirmed
 1. Source messages where processingStatus in ['pending', 'processing']
    → Show as "Analyzing..." cards at top
 
-2. Items where status in ['pendingReview', 'confirmed']
+2. Items where status in ['pendingReview', 'confirmed', 'cancelled']
    → Show grouped by date, chronological
 ```
 
-Completed and cancelled items are hidden from the main Feed (accessible via item detail or history).
+**Cancelled items remain visible** in the Feed under their date with a "Cancelled" badge, faded appearance, and strikethrough title. This gives the parent clear visibility that something was removed from the schedule. Completed items are hidden from the main Feed.
 
 ---
 
@@ -212,10 +212,15 @@ Items are **always editable** at any lifecycle stage. Edit mode allows changing 
 
 ## Completion Behavior
 
-When a user marks an item done or cancels it:
-- Card fades in the Feed
-- Remains visible briefly, then hidden on next refresh
-- Accessible from item detail if user searches or navigates back
+**Completed items:** Hidden from the Feed after completion. Accessible via item detail or history.
+
+**Cancelled items:** Remain visible in the Feed under their scheduled date with:
+- "Cancelled" coral badge
+- Faded appearance (50% opacity)
+- Title strikethrough
+- Tappable → opens Item Detail (still editable, can be un-cancelled)
+
+This gives parents clear visibility that something was removed from the schedule — especially important when a cancellation comes from an external source (school email, coach message).
 
 Fast and satisfying, but **not gamified**.
 

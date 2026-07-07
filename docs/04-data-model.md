@@ -179,9 +179,40 @@ Or an override:
 
 ---
 
+## Household Document
+
+The household document lives at `households/{householdId}`.
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Document ID |
+| `name` | string | Household display name |
+| `primaryUserId` | string | UID of the primary parent account |
+| `timezone` | string | Household timezone (e.g., "Europe/Amsterdam") |
+| `language` | string | Default language (e.g., "en") |
+| `emailAlias` | string? | Forwarding email (e.g., "jaffal@nabboapp.com") |
+| `zipCode` | string? | Zip/postal code |
+| `city` | string? | City name |
+| `country` | string? | Country name or code |
+| `memberIds` | array | List of user IDs with access |
+| `createdAt` | Timestamp | When created |
+| `updatedAt` | Timestamp? | Last modification |
+
+### Location Fields
+
+- `zipCode`, `city`, `country` can be set manually in Settings → Edit Household
+- They can also be auto-detected from the device's GPS location (with permission)
+- Used by AI extraction for local context (school names, activity venues, currency)
+
+---
+
 ## Family Members
 
 Stored in `households/{householdId}/members/{memberId}`.
+
+The **primary parent is automatically added** as a family member when the household is created (during onboarding). This ensures they are available in the Owner dropdown for item assignment.
 
 ### Fields
 
@@ -221,6 +252,7 @@ Stored in `households/{householdId}/members/{memberId}`.
 
 ```
 Household
+├── Fields: name, timezone, language, emailAlias, zipCode, city, country
 ├── Family Members (subcollection: members/)
 │   └── Each member has: name, role, ageGroup, photoUrl, color
 ├── Source Messages (subcollection: sourceMessages/)
@@ -244,11 +276,11 @@ Household
 ### Feed Query (main screen)
 
 ```
-items where status in ['pendingReview', 'confirmed']
+items where status in ['pendingReview', 'confirmed', 'cancelled']
   order by date ascending
 ```
 
-Shows: pending items first (no date), then chronological.
+Shows: pending items first, then chronological. Cancelled items remain visible with strikethrough + badge.
 
 ### Completed/History
 

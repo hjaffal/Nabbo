@@ -37,6 +37,8 @@ Short explanation: "Send school emails, WhatsApp messages, screenshots, voice no
 - Timezone (required)
 - Default language (required)
 
+On completion, the primary parent is **automatically added as a family member** with role `primaryParent` and a random color. This ensures they appear in the Owner dropdown when assigning items.
+
 ### Step 3: Add Children
 
 - Child name (required)
@@ -254,7 +256,7 @@ A focused view showing ONLY items with `status: pendingReview`.
 ## Settings Screen
 
 Sections:
-- **Household** — name, timezone, language (tap to edit)
+- **Household** — name, timezone, language, location (zip code, city, country) — tap to edit
 - **Email alias** — display + copy
 - **Family members** — list (shows name + color dot), add, edit (name, role, photo, color), remove
 - **Notifications** — category toggles, quiet hours
@@ -267,6 +269,17 @@ Fields:
 - Role (dropdown)
 - Photo (upload/camera)
 - **Color** (color picker from palette — used for visual identification in cards throughout the app)
+
+### Edit Household
+
+Fields:
+- Name (text)
+- Timezone (dropdown or auto-detect)
+- Language (dropdown)
+- **Zip code** (text, or auto-detect from GPS)
+- **City** (text, or auto-detect from GPS)
+- **Country** (text, or auto-detect from GPS)
+- "Detect location" button — uses device GPS + reverse geocoding to fill zip/city/country
 
 ---
 

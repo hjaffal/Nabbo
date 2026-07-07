@@ -224,28 +224,28 @@ Form screen for editing any item at any lifecycle stage.
 │                                                    │
 │  Summary                                           │
 │  ┌──────────────────────────────────────────────┐  │
-│  │                                              │  │
+│  │ Optional details                             │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  Child (affected member)                           │
+│  Child (who is this about?)                        │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ Adam                                         │  │
+│  │ 🟣 Adam                                 ▼   │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  Owner (responsible parent)                        │
+│  Owner (who is responsible?)                       │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ Hassan                                       │  │
+│  │ 🟢 Hassan                               ▼   │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                    │
 │  Location                                          │
 │  ┌──────────────────────────────────────────────┐  │
-│  │ Sports Hall                                  │  │
+│  │ 📍 Sports Hall          (autocomplete)       │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                    │
 │  Date & Time                                       │
-│  [ 11/07/2026 ]  [ 18:30 ]                        │
+│  [ 📅 11/07/2026 ]  [ 🕐 18:30 ]                  │
 │                                                    │
-│  [ Set end date (optional) ]                       │
+│  [ End date (optional) ]                           │
 │                                                    │
 └────────────────────────────────────────────────────┘
 ```
@@ -257,18 +257,26 @@ Form screen for editing any item at any lifecycle stage.
 | Type | Segmented button (event/task/deadline) | Yes |
 | Title | Text field | Yes |
 | Summary | Text field (multiline) | No |
-| Child | Text field (future: dropdown of family members) | No |
-| Owner | Text field (future: dropdown of adults only) | No |
-| Location | Text field | No |
-| Date | Date picker | No |
-| Time | Time picker | No |
-| End date | Date picker | No |
+| Child | **Dropdown** — lists children from family members, with color dot + name | No |
+| Owner | **Dropdown** — lists adults only (parents/caregivers), with color dot + name | No |
+| Location | **Autocomplete** — Google Places autocomplete with text fallback | No |
+| Date | Date picker button | No |
+| Time | Time picker button | No |
+| End date | Date picker button | No |
+
+### Dropdown behavior
+
+- Child dropdown shows family members with role `child`
+- Owner dropdown shows family members with role `primaryParent`, `secondaryParent`, `caregiver`, `grandparent`
+- Each option shows the member's color dot + initial circle + name
+- "— None" option available to clear the selection
+- Owner is NEVER a child
 
 ### Behavior
 
 - Save writes to Firestore via `ItemRepository.updateItem()`
 - Works at any lifecycle stage
-- Unsaved changes prompt discard confirmation (future)
+- Section labels shown above each field for clarity
 
 ---
 

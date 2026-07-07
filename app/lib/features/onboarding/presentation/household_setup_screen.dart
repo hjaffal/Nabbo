@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/timezones.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/member_colors.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/timezone_search_sheet.dart';
+import '../../household/data/models/family_member_model.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 
@@ -68,8 +70,9 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
     try {
       final userId = FirebaseAuth.instance.currentUser!.uid;
       final repo = ref.read(householdRepositoryProvider);
+      final parentName = _parentNameController.text.trim();
 
-      await repo.createHousehold(HouseholdModel(
+      final household = await repo.createHousehold(HouseholdModel(
         id: '',
         name: _nameController.text.trim(),
         primaryUserId: userId,
@@ -77,8 +80,17 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
         language: _language,
       ));
 
-      await FirebaseAuth.instance.currentUser!
-          .updateDisplayName(_parentNameController.text.trim());
+      // Auto-add primary parent as family member
+      await repo.addFamilyMember(FamilyMemberModel(
+        id: '',
+        householdId: household.id,
+        name: parentName,
+        role: MemberRole.primaryParent,
+        ageGroup: AgeGroup.adult,
+        color: MemberColors.randomColor(),
+      ));
+
+      await FirebaseAuth.instance.currentUser!.updateDisplayName(parentName);
 
       if (!mounted) return;
       context.go('/onboarding/children');

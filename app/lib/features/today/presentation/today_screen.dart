@@ -33,7 +33,8 @@ class TodayScreen extends ConsumerWidget {
       body: householdAsync.when(
         data: (household) {
           if (household == null) return const _EmptyState();
-          return _FeedContent(householdId: household.id);
+          final displayName = FirebaseAuth.instance.currentUser?.displayName ?? household.name;
+          return _FeedContent(householdId: household.id, userName: displayName);
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -90,7 +91,8 @@ class FeedEntry {
 
 class _FeedContent extends StatelessWidget {
   final String householdId;
-  const _FeedContent({required this.householdId});
+  final String userName;
+  const _FeedContent({required this.householdId, required this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +133,7 @@ class _FeedContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_greeting(),
+                      Text('${_greeting()}, $userName',
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
@@ -237,8 +239,8 @@ class _FeedContent extends StatelessWidget {
       for (final doc in snapshot.docs) {
         try {
           final item = ItemModel.fromFirestore(doc);
-          // Skip items we don't want in the feed
-          // (currently we show all statuses per the spec)
+          // Hide completed items from feed (cancelled items stay visible)
+          if (item.status == ItemStatus.completed) continue;
           // Expand recurring items
           if (item.recurrence != null && item.status == ItemStatus.confirmed) {
             entries.addAll(_expandRecurring(item));

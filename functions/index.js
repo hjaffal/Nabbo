@@ -60,9 +60,16 @@ exports.extractSourceMessage = onDocumentCreated(
         return { id: doc.id, title: d.title, type: d.type, childName: d.childName, date: d.date, recurrence: d.recurrence };
       });
 
-      const existingContext = existingItems.map(i =>
-        `[${i.type}] ${i.title}${i.childName ? ` (${i.childName})` : ''}`
-      );
+      const existingContext = existingItems.map(i => {
+        let desc = `- [${i.type}] "${i.title}"`;
+        if (i.childName) desc += ` (child: ${i.childName})`;
+        if (i.recurrence) desc += ` [recurring: ${i.recurrence.frequency} on ${i.recurrence.dayOfWeek || 'N/A'}]`;
+        else if (i.date) {
+          const d = i.date.toDate ? i.date.toDate() : new Date(i.date);
+          desc += ` [date: ${d.toISOString().split('T')[0]}]`;
+        }
+        return desc;
+      });
 
       // Build prompt and call Gemini
       const prompt = buildExtractionPrompt(message.originalContent, familyMembers, existingContext);
@@ -195,7 +202,7 @@ function buildExtractionPrompt(content, familyMembers, existingContext = []) {
     : 'No family members registered yet.';
 
   const contextStr = existingContext.length > 0
-    ? `\nExisting household items (for context):\n${existingContext.join('\n')}`
+    ? `\n\nEXISTING CONFIRMED ITEMS IN THIS HOUSEHOLD (use these for change detection):\n${existingContext.join('\n')}\n\nIMPORTANT: If the input message cancels, reschedules, or modifies any of the items above, you MUST use action "update" or "cancel" with targetItemTitle matching the existing item's title. Do NOT create a new item if it refers to an existing one.`
     : '';
 
   return `You are Nabbo, a family logistics AI. Extract actionable items from the message below.
