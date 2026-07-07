@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -106,19 +108,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
           ),
           const SizedBox(height: 24),
-          TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              prefixIcon: Icon(Icons.email_outlined),
+          LabeledField(
+            label: 'Email',
+            child: TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              decoration: const InputDecoration(
+                hintText: 'you@example.com',
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Please enter your email';
+                if (!v.contains('@')) return 'Please enter a valid email';
+                return null;
+              },
             ),
-            validator: (v) {
-              if (v == null || v.isEmpty) return 'Please enter your email';
-              if (!v.contains('@')) return 'Please enter a valid email';
-              return null;
-            },
           ),
           if (_error != null) ...[
             const SizedBox(height: 16),

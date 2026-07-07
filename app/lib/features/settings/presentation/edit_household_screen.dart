@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/timezones.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/timezone_search_sheet.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
@@ -141,55 +142,62 @@ class _EditHouseholdScreenState extends ConsumerState<EditHouseholdScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Household name',
-                  prefixIcon: Icon(Icons.home_outlined),
+              LabeledField(
+                label: 'Household name',
+                child: TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter household name',
+                  ),
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                 ),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 20),
 
-              GestureDetector(
-                onTap: () => _showTimezonePicker(context),
-                child: AbsorbPointer(
-                  child: TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: 'Timezone',
-                      hintText: 'Select timezone',
-                      prefixIcon: Icon(Icons.schedule_outlined),
-                      suffixIcon: Icon(Icons.arrow_drop_down),
+              LabeledField(
+                label: 'Timezone',
+                child: GestureDetector(
+                  onTap: () => _showTimezonePicker(context),
+                  child: AbsorbPointer(
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        hintText: 'Select timezone',
+                        suffixIcon: Icon(Icons.arrow_drop_down),
+                      ),
+                      controller: TextEditingController(text: _timezone),
                     ),
-                    controller: TextEditingController(text: _timezone),
                   ),
                 ),
               ),
               const SizedBox(height: 20),
 
-              DropdownButtonFormField<String>(
-                value: _language,
-                decoration: const InputDecoration(
-                  labelText: 'Default language',
-                  prefixIcon: Icon(Icons.language_outlined),
+              LabeledField(
+                label: 'Default language',
+                child: DropdownButtonFormField<String>(
+                  value: _language,
+                  decoration: const InputDecoration(
+                    hintText: 'Select language',
+                  ),
+                  items: _languages.entries
+                      .map((e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _language = v!),
                 ),
-                items: _languages.entries
-                    .map((e) =>
-                        DropdownMenuItem(value: e.key, child: Text(e.value)))
-                    .toList(),
-                onChanged: (v) => setState(() => _language = v!),
               ),
               const SizedBox(height: 20),
 
               // Email alias (read-only)
               if (_household?.emailAlias != null)
-                TextFormField(
-                  initialValue: _household!.emailAlias,
+                LabeledField(
+                  label: 'Nabbo email alias',
                   readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Nabbo email alias',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    helperText: 'This cannot be changed',
+                  child: TextFormField(
+                    initialValue: _household!.emailAlias,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      hintText: 'Email alias',
+                    ),
                   ),
                 ),
             ],

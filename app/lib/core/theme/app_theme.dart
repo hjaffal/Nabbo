@@ -108,36 +108,38 @@ class AppTheme {
           shadowColor: AppColors.shadow,
         ),
         inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.surfaceSoft,
+          filled: false,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.border, width: 1),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.border, width: 1),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: AppColors.softCoral, width: 1),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: AppColors.softCoral, width: 1.5),
           ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+          ),
           hintStyle:
-              const TextStyle(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.w400),
+              const TextStyle(color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w400),
           labelStyle:
               const TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
-          floatingLabelStyle:
-              const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w600),
+          floatingLabelBehavior: FloatingLabelBehavior.never,
           prefixIconColor: AppColors.textMuted,
           suffixIconColor: AppColors.textMuted,
         ),

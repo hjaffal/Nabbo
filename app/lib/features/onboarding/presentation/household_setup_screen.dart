@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/timezones.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/timezone_search_sheet.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
@@ -125,52 +126,63 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Household name',
-                        hintText: 'e.g. The Jaffal Family',
+                    LabeledField(
+                      label: 'Household name',
+                      child: TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. The Jaffal Family',
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-                    TextFormField(
-                      controller: _parentNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Your name',
-                        hintText: 'e.g. Hasan',
+                    LabeledField(
+                      label: 'Your name',
+                      child: TextFormField(
+                        controller: _parentNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. Hasan',
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-                    GestureDetector(
-                      onTap: () => _showTimezonePicker(context),
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          decoration: InputDecoration(
-                            labelText: 'Timezone',
-                            hintText: 'Select timezone',
-                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                    LabeledField(
+                      label: 'Timezone',
+                      child: GestureDetector(
+                        onTap: () => _showTimezonePicker(context),
+                        child: AbsorbPointer(
+                          child: TextFormField(
+                            decoration: const InputDecoration(
+                              hintText: 'Select timezone',
+                              suffixIcon: Icon(Icons.arrow_drop_down),
+                            ),
+                            controller:
+                                TextEditingController(text: _timezone),
                           ),
-                          controller: TextEditingController(text: _timezone),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-                    DropdownButtonFormField<String>(
-                      initialValue: _language,
-                      decoration:
-                          const InputDecoration(labelText: 'Default language'),
-                      items: _languages.entries
-                          .map((e) => DropdownMenuItem(
-                              value: e.key, child: Text(e.value)))
-                          .toList(),
-                      onChanged: (v) => setState(() => _language = v!),
+                    LabeledField(
+                      label: 'Default language',
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _language,
+                        decoration: const InputDecoration(
+                          hintText: 'Select language',
+                        ),
+                        items: _languages.entries
+                            .map((e) => DropdownMenuItem(
+                                value: e.key, child: Text(e.value)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _language = v!),
+                      ),
                     ),
                   ],
                 ),
