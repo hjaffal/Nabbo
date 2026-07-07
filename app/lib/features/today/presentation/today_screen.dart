@@ -145,7 +145,7 @@ class _FeedContent extends StatelessWidget {
   }
 
   Stream<List<_FeedItem>> _buildFeedStream(DocumentReference householdRef) {
-    // 1. Source messages that are pending/processing/completed but not yet approved
+    // 1. Source messages that are pending/processing/completed (not yet approved)
     final sourcesStream = householdRef.collection('sourceMessages')
         .where('processingStatus', whereIn: ['pending', 'processing', 'completed'])
         .snapshots()

@@ -37,6 +37,17 @@ class ApprovalService {
       if (ownerName != null) 'assignedOwnerName': ownerName,
     });
 
+    // 1b. Check if all extracted items for this source are reviewed
+    //     If so, mark the source message as 'approved' so it leaves the Feed
+    if (item.sourceMessageId != null) {
+      final sourceRef = _firestore
+          .collection('households')
+          .doc(householdId)
+          .collection('sourceMessages')
+          .doc(item.sourceMessageId);
+      batch.update(sourceRef, {'processingStatus': 'approved'});
+    }
+
     // 2. Create the committed object in the appropriate collection
     final committedData = _buildCommittedObject(item, ownerId, ownerName);
     final collection = _getCollectionName(item.itemType);
