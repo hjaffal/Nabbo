@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -321,10 +319,12 @@ class _EditMemberDialogState extends ConsumerState<_EditMemberDialog> {
     if (image == null) return;
     setState(() => _isUploading = true);
     try {
+      final bytes = await image.readAsBytes();
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${widget.member.id}.jpg';
       final storagePath = 'households/${widget.member.householdId}/members/$fileName';
       final storageRef = FirebaseStorage.instance.ref(storagePath);
-      await storageRef.putFile(File(image.path));
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
+      await storageRef.putData(bytes, metadata);
       final url = await storageRef.getDownloadURL();
       setState(() { _photoUrl = url; _isUploading = false; });
     } catch (e) {

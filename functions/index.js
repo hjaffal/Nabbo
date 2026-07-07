@@ -74,10 +74,52 @@ exports.extractSourceMessage = onDocumentCreated(
       // Build prompt and call Gemini
       const prompt = buildExtractionPrompt(message.originalContent, familyMembers, existingContext);
 
-      const result = await genai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
+      let result;
+      const attachmentUrl = message.attachmentUrl || null;
+      const attachmentType = message.attachmentType || null;
+
+      if (attachmentUrl && attachmentType && (attachmentType.startsWith('image') || attachmentType === 'image')) {
+        // Multimodal: download image and send as inline data to Gemini
+        try {
+          const https = require('https');
+          const imageBuffer = await new Promise((resolve, reject) => {
+            https.get(attachmentUrl, (res) => {
+              const chunks = [];
+              res.on('data', (chunk) => chunks.push(chunk));
+              res.on('end', () => resolve(Buffer.concat(chunks)));
+              res.on('error', reject);
+            }).on('error', reject);
+          });
+
+          const base64Image = imageBuffer.toString('base64');
+
+          result = await genai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: prompt + '\n\nThe above rules apply. Extract items from the image below:' },
+                  { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+                ],
+              },
+            ],
+          });
+        } catch (imgErr) {
+          console.error('Image download/processing error:', imgErr.message);
+          // Fallback to text-only if image fails
+          result = await genai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+          });
+        }
+      } else {
+        // Text-only
+        result = await genai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        });
+      }
       const text = result.text;
 
       const extracted = parseExtractionResponse(text);

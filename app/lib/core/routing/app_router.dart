@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,7 +17,25 @@ import '../../features/settings/presentation/settings_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/today',
+    redirect: (context, state) {
+      final user = FirebaseAuth.instance.currentUser;
+      final isLoggedIn = user != null;
+      final isAuthRoute = state.matchedLocation == '/login';
+      final isOnboarding = state.matchedLocation.startsWith('/onboarding') ||
+          state.matchedLocation == '/welcome';
+
+      // Not logged in → force to login (unless already there)
+      if (!isLoggedIn && !isAuthRoute) return '/login';
+
+      // Logged in but on login page → go to feed
+      if (isLoggedIn && isAuthRoute) return '/today';
+
+      // Allow onboarding routes if logged in
+      if (isLoggedIn && isOnboarding) return null;
+
+      return null;
+    },
     routes: [
       // Auth
       GoRoute(

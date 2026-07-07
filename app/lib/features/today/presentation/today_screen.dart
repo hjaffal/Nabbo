@@ -82,7 +82,7 @@ class FeedEntry {
   });
 
   bool get isPending =>
-      feedStatus == 'analyzing' || feedStatus == 'pendingReview';
+      feedStatus == 'analyzing' || feedStatus == 'pendingReview' || feedStatus == 'failed' || feedStatus == 'noAction';
   bool get isCancelled => feedStatus == 'cancelled';
   bool get isDone => feedStatus == 'completed';
 
@@ -296,9 +296,9 @@ class _FeedContent extends StatelessWidget {
             .where((d) {
               final data = d.data();
               final status = data['processingStatus'] as String?;
-              // Only show pending/processing (analyzing state)
+              // Show pending/processing (analyzing) + failed/noAction (so user sees the result)
               // completed sources are represented by their items in the items stream
-              return status == 'pending' || status == 'processing';
+              return status == 'pending' || status == 'processing' || status == 'failed' || status == 'noAction';
             })
             .map((d) => _mapSource(d))
             .toList());
@@ -384,16 +384,39 @@ class _FeedContent extends StatelessWidget {
     final d = doc.data() as Map<String, dynamic>;
     final received = (d['receivedAt'] as Timestamp?)?.toDate();
     final content = d['originalContent'] as String? ?? 'New capture';
+    final status = d['processingStatus'] as String? ?? 'pending';
+
+    final isAnalyzing = status == 'pending' || status == 'processing';
+    final isFailed = status == 'failed';
+    final isNoAction = status == 'noAction';
+
+    String subtitle;
+    Color iconColor;
+    Color iconBg;
+    if (isFailed) {
+      subtitle = 'Failed — tap to retry';
+      iconColor = AppColors.softCoral;
+      iconBg = AppColors.coralLight;
+    } else if (isNoAction) {
+      subtitle = 'No action found';
+      iconColor = AppColors.textMuted;
+      iconBg = AppColors.surfaceSoft;
+    } else {
+      subtitle = 'Analyzing...';
+      iconColor = AppColors.softBlue;
+      iconBg = AppColors.blueLight;
+    }
 
     return FeedEntry(
       id: doc.id,
       title: _truncate(content, 80),
+      location: subtitle,
       dateTime: received,
-      feedStatus: 'analyzing',
+      feedStatus: isAnalyzing ? 'analyzing' : (isFailed ? 'failed' : 'noAction'),
       type: 'source',
       icon: _inputIcon(d['inputMethod']),
-      iconColor: AppColors.softBlue,
-      iconBg: AppColors.blueLight,
+      iconColor: iconColor,
+      iconBg: iconBg,
       sourceMessageId: doc.id,
       isSource: true,
     );
@@ -818,6 +841,8 @@ class _StatusBadge extends StatelessWidget {
       'confirmed' => ('Active', AppColors.softGreen),
       'cancelled' => ('Cancelled', AppColors.softCoral),
       'completed' => ('Done', AppColors.softGreen),
+      'failed' => ('Failed', AppColors.softCoral),
+      'noAction' => ('No action', AppColors.textMuted),
       _ => ('', AppColors.textMuted),
     };
 
