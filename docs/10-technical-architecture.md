@@ -4,9 +4,9 @@
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Mobile App** | Flutter (iOS + Android) | Cross-platform UI, share extension, notifications |
+| **Mobile App** | Flutter (iOS + Android + Web) | Cross-platform UI, share extension, notifications |
 | **Backend Services** | Firebase | Auth, database, storage, messaging, serverless functions |
-| **Cloud Platform** | Google Cloud | AI extraction, email ingestion, scheduled tasks, speech/vision |
+| **Cloud Platform** | Google Cloud | AI extraction, email ingestion, scheduled tasks |
 
 ---
 
@@ -15,25 +15,23 @@
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   Flutter App                         │
-│  (iOS + Android, share extension, notifications)     │
+│  (iOS + Android + Web, share extension, notifications)│
 └──────────────────────┬──────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────┐
 │                    Firebase                           │
 │  • Auth (household accounts)                         │
-│  • Firestore (data model — all 20 objects)           │
-│  • Cloud Storage (source messages, images, PDFs)     │
+│  • Firestore (2 collections per household)           │
+│  • Cloud Storage (images, attachments)               │
 │  • Cloud Messaging (push notifications)              │
-│  • Cloud Functions (triggers, background logic)      │
+│  • Cloud Functions (AI extraction trigger)            │
 └──────────────────────┬──────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────┐
 │                  Google Cloud                         │
-│  • Vertex AI / Gemini (extraction engine)            │
-│  • Cloud Run (email ingestion service)               │
-│  • Cloud Tasks (scheduled reminders, daily briefs)   │
-│  • Speech-to-Text (voice input transcription)        │
-│  • Vision AI (screenshot/image text extraction)      │
+│  • Gemini 2.5 Flash (extraction engine)              │
+│  • Cloud Run (email ingestion via SendGrid)          │
+│  • Cloud Tasks (scheduled deadline checks)           │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -44,117 +42,102 @@
 ### Authentication
 - Email/password for primary parent account
 - Household-level access (single user in v1, multi-user later)
-- Anonymous auth for onboarding preview (optional)
 
 ### Firestore
-- Primary database for all 20 core data objects
-- Real-time listeners for Review Inbox and Today view
-- Offline persistence for Today Command Center
+- **2 collections per household** (see Data Model doc):
+  - `sourceMessages/` — raw captured inputs
+  - `items/` — everything extracted, reviewed, and confirmed
+- Real-time listeners for Feed and Review screens
+- Offline persistence for Feed
 - Security rules scoped to household ID
 
 ### Cloud Storage
-- Original source messages (images, PDFs, screenshots, voice recordings)
-- Processed attachments from forwarded emails
+- Uploaded images (from image capture)
+- Email attachments (via Cloud Run ingestion)
 - Retention policies for source traceability
 
 ### Cloud Messaging (FCM)
-- Push notifications (review needed, changes, deadlines, owner gaps, prep reminders)
-- Topic-based for household-level alerts
+- Push notifications (review needed, deadlines due)
 - Token management per device
+- Sent after extraction and on hourly deadline check
 
 ### Cloud Functions
-- Triggered on new Source Message creation → kicks off extraction pipeline
-- Triggered on extraction completion → creates Review Cards
-- Triggered on approval → commits objects, evaluates risks
-- Scheduled functions for daily brief generation, deadline checks, notification scheduling
+- **`extractSourceMessage`** — Triggered on new sourceMessage creation:
+  1. Gathers household context (family members + existing items)
+  2. Calls Gemini 2.5 Flash for extraction
+  3. Writes items directly to `items/` with `status: pendingReview`
+  4. Updates sourceMessage `processingStatus`
+  5. Sends push notification
+- **`checkDeadlines`** — Scheduled hourly:
+  1. Finds deadlines due within 24 hours
+  2. Sends push notification reminders
 
 ---
 
 ## Google Cloud Services
 
-### Vertex AI / Gemini
-- Core extraction engine
-- Receives: raw text, extracted OCR text, email body, transcript
-- Returns: structured JSON with detected objects, confidence per field, uncertainty markers
-- Model: Gemini 1.5 Pro (strong at structured extraction from messy multilingual text)
-- Prompt includes: household context (family members, routines, existing events) for change detection
+### Gemini 2.5 Flash
+- Core extraction engine (via `@google/genai` SDK)
+- API key stored as Firebase Secret (`GEMINI_API_KEY`)
+- Receives: raw text + household context (family members + existing items)
+- Returns: JSON array of extracted items with type, fields, confidence, uncertainty
+- Prompt includes household context for accurate child matching
 
 ### Cloud Run
 - Email ingestion service
-- Receives forwarded emails at `*@nabbo.app`
-- Parses email (sender, subject, body, attachments)
-- Stores as Source Message in Firestore + attachments in Cloud Storage
-- Triggers extraction pipeline
+- Receives forwarded emails at `*@nabboapp.com` via SendGrid Inbound Parse
+- Deployed at: `https://email-ingestion-946615442462.europe-west1.run.app`
+- Parses email (sender, subject, body)
+- Creates sourceMessage in Firestore → triggers extraction
 
-### Cloud Tasks
-- Scheduled notification delivery (morning brief, evening reset, deadline reminders)
-- Preparation reminder scheduling (based on event time minus prep window)
-- Deadline escalation (remind again if no action taken)
-- Daily brief generation
-
-### Speech-to-Text
-- Voice input transcription
-- Called from Cloud Function when voice Source Message is created
-- Transcript stored alongside original audio
-
-### Vision AI / Document AI
-- OCR for screenshots, photos of paper forms, school letters
-- Text extraction from images before sending to Gemini for semantic extraction
-- PDF text extraction for forwarded documents
+### Cloud Tasks (via Scheduled Functions)
+- Hourly deadline check
+- Sends reminders for confirmed deadlines due within 24 hours
 
 ---
 
 ## Data Flow
 
-### Capture → Extraction → Review → Commit
+### Capture → Extraction → Review → Confirmed
 
 ```
-1. User captures input (share, email, text, voice)
+1. User captures input (text/voice/image/share/email)
         │
-2. Source Message created in Firestore
-   Attachments stored in Cloud Storage
+2. sourceMessage created in Firestore
+   processingStatus: 'pending'
+   → Appears immediately in Feed as "Analyzing..."
         │
-3. Cloud Function triggered
-   - Voice? → Speech-to-Text → transcript
-   - Image/PDF? → Vision AI → extracted text
-   - Email? → parsed by Cloud Run
+3. Cloud Function triggered (extractSourceMessage)
+   processingStatus → 'processing'
         │
-4. Extracted text + household context sent to Gemini
+4. Function gathers context:
+   - Family members (names, roles)
+   - Existing confirmed items (for deduplication context)
         │
-5. Gemini returns structured extraction (JSON)
+5. Calls Gemini 2.5 Flash with extraction prompt
         │
-6. Extracted Items created in Firestore
-   Processing status updated
-   Push notification sent if urgent
+6. Gemini returns JSON array of extracted items
         │
-7. User reviews in Review Inbox
+7. Items written directly to items/ collection
+   status: 'pendingReview'
+   sourceMessageId set for traceability
         │
-8. On approval → committed objects created
-   (Events, Tasks, Deadlines, Checklists, etc.)
-   Risk detection runs
-   Today view updates in real-time
+8. sourceMessage processingStatus → 'completed'
+   Push notification sent: "X items need review"
+        │
+9. User sees items in Feed with "Review" badge
+   Taps → Review detail screen
+        │
+10. User approves → status: 'confirmed' (same document)
+    Item now shows as active in Feed under its date
 ```
 
-### Change Detection Flow
+### Key Principle: No Data Copying
 
-```
-1. New extraction arrives
-2. Cloud Function queries existing approved objects for same household
-3. Compares: date, time, location, required items against new data
-4. If match found with different values → creates Change object
-5. Review Card shows previous vs. new values
-6. User confirms or rejects change
-```
-
-### Notification Flow
-
-```
-1. Cloud Tasks runs scheduled checks (every 15 min or event-driven)
-2. Evaluates: deadlines due, owner gaps, prep needed, changes unconfirmed
-3. Generates notification payload with deep-link
-4. Sends via FCM to relevant device(s)
-5. Suppresses if item already completed or dismissed
-```
+- AI writes directly to `items/` — there is no intermediate `extractedItems/` collection
+- Approval = status field change on the same document
+- No data is copied between collections at any point
+- Source traceability via `sourceMessageId` reference
 
 ---
 
@@ -163,85 +146,35 @@
 ```
 households/
   {householdId}/
-    - name, timezone, language, emailAlias, createdAt
-    
+    - name, timezone, language, emailAlias, primaryUserId, createdAt
+
     members/
       {memberId}/
-        - name, role, ageGroup, color, defaultResponsibilities
+        - name, role, ageGroup, photoUrl
 
     sourceMessages/
       {sourceId}/
-        - inputMethod, originalContent, attachmentType, sourceApp
-        - receivedAt, processedAt, processingStatus
-        - extractedText, confidenceSummary
+        - householdId, submittedBy, inputMethod
+        - originalContent, attachmentUrl, attachmentType
+        - sourceApp, processingStatus, receivedAt, processedAt
 
-    extractedItems/
+    items/
       {itemId}/
-        - sourceMessageId, affectedMember, itemType
-        - extractedSummary, detectedFields{}
-        - confidenceLevel, uncertainFields[]
-        - reviewStatus, suggestedNextStep
+        - householdId, type (event|task|deadline)
+        - status (pendingReview|confirmed|completed|cancelled)
+        - title, summary
+        - childId, childName, ownerId, ownerName
+        - date, endDate, location
+        - recurrence { frequency, dayOfWeek, startDate, endDate }
+        - exceptions [{ date, status?, overrides? }]
+        - sourceMessageId
+        - extractedFields {}, confidence {}, uncertainFields []
+        - suggestedActions []
+        - createdAt, updatedAt
 
-    events/
-      {eventId}/
-        - title, affectedMember, startDateTime, endDateTime
-        - location, owner, status, relatedSourceId
-        - changeHistory[], reminderSettings
-
-    tasks/
-      {taskId}/
-        - title, affectedMember, owner, dueDate
-        - priority, status, relatedEventId, relatedSourceId
-
-    deadlines/
-      {deadlineId}/
-        - title, dueDate, owner, urgency, status
-        - relatedTaskId, relatedFormId, relatedPaymentId
-
-    requiredItems/
-      {itemId}/
-        - name, quantity, affectedMember, neededBy
-        - category, packedStatus, owner, relatedEventId
-
-    checklists/
-      {checklistId}/
-        - title, type, affectedMember, relatedEventId
-        - items[], owner, completionStatus
-
-    forms/
-      {formId}/
-        - title, affectedMember, requiredAction, dueDate
-        - owner, submissionMethod, status, attachmentRef
-
-    payments/
-      {paymentId}/
-        - title, amount, currency, affectedMember
-        - dueDate, paymentMethod, owner, status
-
-    locations/
-      {locationId}/
-        - name, address, type, linkedMembers[], defaultTravelTime
-
-    changes/
-      {changeId}/
-        - relatedObjectType, relatedObjectId
-        - previousValue, newValue, changeType
-        - sourceMessageId, impactLevel, reviewStatus
-
-    risks/
-      {riskId}/
-        - title, description, type, affectedMember
-        - severity, suggestedAction, owner, status
-
-    routines/
-      {routineId}/
-        - name, affectedMember, type, frequency
-        - commonLocation, commonItems[], defaultOwner
-
-    reminders/
-      {reminderId}/
-        - relatedObjectType, relatedObjectId
-        - recipient, reminderTime, type, status
+userTokens/
+  {userId}/
+    - fcmToken, updatedAt
 ```
 
 ---
@@ -251,36 +184,52 @@ households/
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | State management | Riverpod | Type-safe, scalable, good Firestore stream integration |
-| App architecture | Clean Architecture (feature-first) | Separation of concerns, testable, scales with features |
-| Firestore structure | Subcollections under household | Natural security boundary, efficient queries per household |
-| AI model | Gemini 1.5 Pro (Vertex AI) | Best for structured extraction from messy multilingual text |
-| Email ingestion | Cloud Run + custom domain | Scalable, stateless, handles attachments |
-| Share extension | Native (Swift/Kotlin) bridged to Flutter | Required for iOS/Android share sheets |
-| Offline support | Firestore offline persistence | Today view works without network |
-| Notifications | FCM + Cloud Tasks | Scheduled + event-driven, deep-link support |
-| Voice transcription | Google Speech-to-Text | Same ecosystem, good multilingual support |
-| Image/PDF processing | Vision AI + Document AI | Handles screenshots, photos, scanned forms |
+| App architecture | Feature-first + Riverpod | Separation of concerns, scales with features |
+| Data model | 2 collections (sourceMessages + items) | Simple, fast queries, no data copying |
+| AI model | Gemini 2.5 Flash | Fast, accurate structured extraction, cost-effective |
+| AI SDK | `@google/genai` (Cloud Functions) | Direct API access, Firebase Secrets for key |
+| Email ingestion | Cloud Run + SendGrid Inbound Parse | Scalable, handles attachments, domain: nabboapp.com |
+| Share extension | `receive_sharing_intent` plugin | Cross-platform mobile share support |
+| Offline support | Firestore offline persistence | Feed works without network |
+| Notifications | FCM + Cloud Functions | Event-driven (post-extraction) + scheduled (deadlines) |
+| Voice transcription | On-device `speech_to_text` plugin | No server round-trip, instant feedback |
+| Code generation | Freezed + json_serializable | Type-safe models, Firestore serialization |
+| Routing | GoRouter | Declarative, deep-link ready |
 
 ---
 
 ## Security Considerations
 
 - Firestore security rules enforce household-level isolation
-- All source messages encrypted at rest (Firebase default)
-- Cloud Functions run in secure environment with least-privilege IAM
-- Email ingestion validates sender domain (optional, for spam prevention)
-- No cross-household data leakage possible via query structure
-- User can delete all data (source messages + extracted items + committed objects)
-- API keys restricted to app bundle IDs
-- Gemini API calls do not retain user data for training (Vertex AI data governance)
+- All data encrypted at rest (Firebase default)
+- Cloud Functions run with least-privilege IAM
+- Gemini API key stored as Firebase Secret (not in code, not in git)
+- No cross-household data leakage via query structure
+- User can delete all data (account deletion flow in Settings)
+- Email ingestion validates via SendGrid webhook signature
 
 ---
 
 ## Scalability Notes
 
 - Firestore scales automatically per household
-- Cloud Functions scale to zero when idle (cost-efficient for early stage)
+- Cloud Functions scale to zero when idle (cost-efficient)
 - Cloud Run handles email spikes without provisioning
-- Gemini API has quota management (can start with pay-per-use)
-- FCM handles millions of notifications without infrastructure management
-- Cloud Tasks handles scheduled work without cron servers
+- Gemini API pay-per-use pricing
+- FCM handles millions of notifications
+- 2-collection architecture keeps queries simple at any scale
+- No N+1 query problems — Feed reads single collection with status filter
+
+---
+
+## Current Deployment
+
+| Service | Status | Region |
+|---------|--------|--------|
+| Flutter App | Running (iOS + Web) | N/A |
+| Firebase Project | `nabbo-app-4d98a` | europe-west1 |
+| Cloud Function (extractSourceMessage) | Deployed | europe-west1 |
+| Cloud Function (checkDeadlines) | Deployed | europe-west1 |
+| Cloud Run (email-ingestion) | Deployed | europe-west1 |
+| SendGrid Inbound Parse | Configured | nabboapp.com |
+| Domain | `nabboapp.com` | N/A |

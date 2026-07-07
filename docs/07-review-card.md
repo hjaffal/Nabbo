@@ -10,13 +10,28 @@ Nabbo receives messy information, extracts operational meaning, and presents it 
 
 ---
 
+## Architecture
+
+Review Cards operate on the **unified items collection**:
+
+```
+households/{householdId}/items/{id}
+```
+
+- A Review Card displays an item with `status: pendingReview`
+- Approval changes the status to `confirmed` on the **same document** (no copy)
+- Fields are always editable — before and after approval
+- Each item links back to its source via `sourceMessageId`
+
+---
+
 ## Core Principle
 
 The Review Card separates three things clearly:
 
-1. **What the source says** (original content)
-2. **What Nabbo extracted** (structured fields)
-3. **What Nabbo suggests** (inferred actions)
+1. **What the source says** (original content via sourceMessageId)
+2. **What Nabbo extracted** (structured fields on the item)
+3. **What Nabbo suggests** (inferred actions in suggestedActions array)
 
 > Parents can tolerate AI uncertainty. They will not tolerate hidden guessing.
 
@@ -25,53 +40,58 @@ The Review Card separates three things clearly:
 ## Card Structure (6 Zones)
 
 ### Zone 1: Source Indicator
-Where the item came from: WhatsApp, forwarded email, screenshot, voice note, free text, PDF.
+Where the item came from: WhatsApp, forwarded email, screenshot, voice note, free text, PDF. Derived from the linked `sourceMessage.inputMethod`.
 
 ### Zone 2: Operational Summary
-Short, plain-English summary of what Nabbo found. Action-focused, not a generic recap.
+The item's `summary` field — short, plain-English summary of what Nabbo found. Action-focused.
 
 ### Zone 3: Extracted Fields
-Structured details Nabbo detected (with confidence labels).
+Structured details from the item's fields:
+- `title` — action-focused title
+- `date` / `endDate` — when it happens
+- `location` — where
+- `childName` — who it's about
+- `ownerName` — who's responsible
+- `type` — event / task / deadline
+- `extractedFields` — additional AI-detected key-value pairs
+
+Each field shows confidence from the `confidence` map.
 
 ### Zone 4: Uncertainty & Confidence
-Fields with low confidence clearly marked.
+Fields listed in `uncertainFields` array are clearly marked. Uses the `confidence` map per field.
 
 ### Zone 5: Suggested Actions
-What Nabbo recommends: approve, assign owner, add checklist, set reminder, resolve risk.
+From the `suggestedActions` array. What Nabbo recommends: approve, assign owner, set reminder, etc.
 
 ### Zone 6: Source Message
-Expandable original source for verification.
+Expandable original source (fetched via `sourceMessageId`). Shows `originalContent`, `attachmentUrl` if present.
 
 ---
 
 ## Required Card Elements
 
-- Source type
-- Affected family member
-- Detected object type
-- Operational summary
+- Source type (from linked source message)
+- Affected family member (`childName`)
+- Item type (`event` / `task` / `deadline`)
+- Operational summary (`summary`)
 - Key extracted fields
 - Confidence / uncertainty markers
-- Suggested next step
+- Suggested next steps (`suggestedActions`)
 - Primary action button
 - Secondary actions
 - Source preview + full source access
-- Review status
 
 ---
 
-## Field Display by Object Type
+## Field Display by Item Type
 
-| Object | Fields Shown |
-|--------|-------------|
-| **Event** | Name, family member, date, time, location, required items, owner, related tasks, detected change |
-| **Task** | Name, family member, due date, owner, related event, priority, reminder suggestion |
-| **Deadline** | Title, due date/time, related task, owner, urgency |
-| **Checklist** | Title, family member, related event, items, owner, needed by |
-| **Form** | Name, required action, due date, owner, submission method, attachment |
-| **Payment** | Title, amount, currency, due date, payment method, owner, related event |
-| **Change** | What changed, previous value, new value, affected event/task, impact |
-| **Risk** | Title, why it matters, affected person, related object, suggested action, severity |
+| Type | Fields Shown |
+|------|-------------|
+| **Event** | Title, child, date/time, end time, location, owner, recurrence |
+| **Task** | Title, child, due date, owner, priority (from extractedFields) |
+| **Deadline** | Title, due date/time, child, owner, urgency |
+
+Additional fields from `extractedFields` map shown as key-value pairs below the main fields.
 
 ---
 
@@ -79,44 +99,41 @@ Expandable original source for verification.
 
 Do NOT show numeric confidence to parents (no "87% confidence").
 
-Use simple labels:
+Use simple labels derived from the `confidence` map:
 
-| Label | Meaning |
-|-------|---------|
-| **Clear** | Explicitly stated in source |
-| **Check this** | Likely but needs verification |
-| **Missing** | Not found |
-| **Suggested** | Inferred from context |
+| confidence value | Display Label |
+|-----------------|---------------|
+| `high` | *Clear* |
+| `medium` | *Check this* |
+| `low` | *Missing / Unclear* |
+| `unknown` | *Missing* |
 
 **Examples:**
 - Date: Friday — *Clear*
 - Location: Sports Hall — *Check this*
 - Owner — *Missing*
-- Add water bottle to checklist — *Suggested*
 
 ---
 
 ## Uncertainty Rules
 
-If Nabbo is uncertain, show it beside the field:
+Fields in the `uncertainFields` array are shown with explicit markers:
 - "Location may be Main Hall"
 - "Child not detected"
 - "Time unclear"
 - "Owner missing"
-- "This may update an existing event"
 
-Uncertain fields should be **editable directly from the card**.
+Uncertain fields are **editable directly from the card**.
 
 ---
 
 ## Source Message Rules
 
-- Original source always available
+- Original source always available via `sourceMessageId` link
 - Short preview by default, full source expandable
-- For emails: sender, subject, date, relevant excerpt, attachments
-- For screenshots/images: image preview + extracted text
-- For voice: transcript + audio reference
-- For WhatsApp/messages: shared text or screenshot
+- For emails: sender, subject, date, relevant excerpt
+- For screenshots/images: image preview via `attachmentUrl`
+- For voice: transcript (`originalContent`)
 
 **The source message is the trust anchor.**
 
@@ -124,31 +141,22 @@ Uncertain fields should be **editable directly from the card**.
 
 ## Primary Actions
 
-Every card has one clear primary action (context-dependent):
+Every card has one clear primary action:
 
-| Card Context | Primary Action |
-|-------------|---------------|
-| Standard extraction | Approve |
-| Low-confidence extraction | Review and approve |
-| Missing owner | Assign owner |
-| Detected change | Confirm change |
-| Risk | Resolve |
-| Form | Add task |
-| Payment | Add payment reminder |
+| Context | Primary Action | What Happens |
+|---------|---------------|--------------|
+| Standard extraction | **Approve** | `status` → `confirmed` |
+| Low-confidence fields | **Review and approve** | User edits uncertain fields, then approves |
+| Missing owner | **Assign owner** | Pick parent/adult, then approve |
 
 ---
 
 ## Secondary Actions
 
-- Edit
-- Dismiss
-- Snooze
-- Assign
-- Mark as handled
-- Split item
-- Merge with existing
-- View source
-- Create routine
+- **Edit** — inline field editing on the item
+- **Delete** — remove item document, mark source as dismissed
+- **Assign owner** — choose parent/adult (never a child)
+- **View source** — expand original message
 
 Secondary actions sit in a compact menu — do not crowd the card.
 
@@ -157,81 +165,31 @@ Secondary actions sit in a compact menu — do not crowd the card.
 ## Action Behaviors
 
 ### Approve
-Commits to household plan. Creates/updates relevant objects. Shows confirmation with any remaining issues visible.
+Changes `status` from `pendingReview` to `confirmed`. Item immediately appears as active in Feed. Confirmation shown briefly.
 
 ### Edit
-Fast, inline. Editable fields: family member, date, time, location, owner, due date, required items, amount, payment method, form action, reminder, checklist items.
+Fast, inline editing directly on the item document. Editable fields: title, child, date, time, location, owner, type, summary, any field in `extractedFields`.
 
 **If editing feels like data entry, Nabbo loses.**
 
-### Dismiss
-Removes from review queue. Optional reason: not relevant, duplicate, already handled, wrong extraction, spam/noise, no action needed. Recoverable briefly.
+### Delete
+Removes the item document from `items/`. Updates linked source message `processingStatus` to `dismissed` if all items from that source are deleted. Recoverable briefly via undo.
 
-### Snooze
-Delays decision. Options: later today, tomorrow, this weekend, next week, custom. Card returns at selected time. Remains findable.
-
-### Assign
-Choose owner: primary parent, second parent, child, caregiver, grandparent, unassigned. Assignment possible during review, not just after approval.
-
-### Mark Handled
-Item is real but already done (already paid, already returned, already packed). Different from dismiss. Recorded as completed.
-
-### Split
-When one card contains too much (e.g., school email with trip + payment + form + packing list). Creates separate cards or objects. Suggested when card includes many action types.
-
-### Merge
-When new info appears to update something existing. Shows: "This may update Adam's football training." Options: confirm change, keep original, create separate, dismiss. Critical for avoiding duplicates.
+### Assign Owner
+Choose from household members with parent/adult role only. Never assign to children. Sets `ownerId` and `ownerName` on the item.
 
 ---
 
-## Special Card Types
+## Review Queue (Review Tab)
 
-### Change Review Card
+Shows all items with `status: pendingReview`, newest first.
 
-Shows:
-- Existing information
-- New information
-- Source of new info
-- Impact
-- Actions: Confirm change / Keep original / Create separate / Dismiss
+Priority indicators:
+- Due today / tomorrow (date is soon)
+- Deadline type items
+- Items with many uncertain fields
 
-**Example:**
-> Training time changed.
-> Previous: Friday 17:00
-> New: Friday 18:30
-> Impact: Departure time and checklist reminder may need updating.
-
----
-
-### Risk Review Card
-
-Calm and action-focused. No panic.
-
-**Example:**
-> "Pickup has no owner."
-> Why: Adam's football training starts at 18:30.
-> Suggested: Assign pickup owner.
-> Actions: Assign / Snooze / Dismiss
-
-Only show risks when action is useful. Too many = noise.
-
----
-
-## Review Queue Priority
-
-**High priority:**
-- Due today / tomorrow
-- Time or location change
-- Missing pickup owner
-- Payments / forms due soon
-- Conflicting events
-- Required items for today
-
-**Low priority:**
-- Future events with complete information
-- Routine suggestions
-- Non-urgent checklist suggestions
-- General notes
+**Do not encourage bulk approval** — it creates trust risk.
 
 ---
 
@@ -249,69 +207,46 @@ A good Review Card passes five tests:
 
 ## Examples
 
-### School Trip Card
+### School Trip Extraction
 
 ```
 Source: Forwarded school email
-Family member: Adam — Clear
+Child: Adam — Clear
 
-Summary: Adam has a school trip to the science museum on Friday. He needs
-packed lunch, water bottle, and raincoat. Permission form due Wednesday.
-Payment of €8 required.
+Summary: Adam has a school trip to the science museum on Friday.
+He needs packed lunch, water bottle, and raincoat.
 
-Extracted:
-  Event: Science museum trip — Clear
-  Date: Friday — Clear
-  Location: Science museum — Clear
-  Required: packed lunch, water bottle, raincoat — Clear
-  Form: permission form, due Wednesday — Clear
-  Payment: €8 via school portal — Clear
-  Owner: Missing
-
-Suggested: Add event, create trip checklist, add form deadline,
-add payment task, assign owner.
-
-[Approve All]  [Edit] [Split] [Assign] [Snooze] [Dismiss]
-```
-
-### Sports Change Card
-
-```
-Source: Shared WhatsApp message
-Family member: Adam — Clear
-
-Summary: Football training moved to Friday at 18:30 at Sports Hall.
-Bring blue jersey and size 4 ball.
-
-Change detected:
-  Existing: football training Friday at 17:00
-  New time: 18:30
-  New location: Sports Hall
-
-Required items: blue jersey, size 4 ball
+Type: Event
+Date: Friday — Clear
+Location: Science museum — Clear
 Owner: Missing
 
-Suggested: Update time, update location, add items to checklist,
-assign packing owner.
+Extracted fields:
+  Required items: packed lunch, water bottle, raincoat — Clear
+  
+Suggested: Approve event, assign owner, create task for packing.
 
-[Confirm Change]  [Keep Original] [Create Separate] [Edit] [Dismiss]
+[Approve]  [Edit] [Assign Owner] [Delete]
 ```
 
-### Free Text Card
+### Free Text Capture
 
 ```
 Source: Typed note
+Child: Yara — Clear
 
 Summary: Yara needs €5 for school tomorrow.
 
-Extracted:
-  Family member: Yara — Clear
-  Payment: €5 — Clear
-  Due: tomorrow — Clear
-  Task: give Yara €5 — Suggested
-  Owner: Missing
+Type: Task
+Date: tomorrow — Clear
+Owner: Missing
 
-[Add Reminder]  [Assign] [Mark Handled] [Edit] [Dismiss]
+Extracted fields:
+  Amount: €5 — Clear
+
+Suggested: Approve, assign owner.
+
+[Approve]  [Assign Owner] [Edit] [Delete]
 ```
 
 ---
@@ -324,6 +259,6 @@ Extracted:
 - Don't hide source material
 - Don't bury uncertain fields
 - Don't make editing feel like form filling
-- Don't make every card look the same if the decision type differs
-- Don't treat changes as normal events
-- Don't allow important actions to enter the plan without review
+- Don't treat all items the same — type and urgency matter
+- Don't allow items to enter the plan without review (no auto-approve)
+- Items remain editable after approval (from Feed detail screen)

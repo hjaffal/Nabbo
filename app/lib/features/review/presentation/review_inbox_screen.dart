@@ -7,9 +7,10 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
-import '../data/models/extracted_item_model.dart';
-import '../data/repositories/review_repository.dart';
-import 'review_card_screen.dart';
+import '../../items/data/models/item_model.dart';
+import '../../items/data/repositories/item_repository.dart';
+import 'review_detail_screen.dart';
+import '../../today/presentation/edit_item_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
   final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -44,9 +45,9 @@ class _ReviewList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.read(reviewRepositoryProvider);
+    final repo = ref.read(itemRepositoryProvider);
 
-    return StreamBuilder<List<ExtractedItemModel>>(
+    return StreamBuilder<List<ItemModel>>(
       stream: repo.watchPendingItems(householdId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -68,15 +69,12 @@ class _ReviewList extends ConsumerWidget {
             if (index == 0) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                child: Row(
-                  children: [
-                    Text(
-                      '${items.length} item${items.length == 1 ? '' : 's'} to review',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                    ),
-                  ],
+                child: Text(
+                  '${items.length} item${items.length == 1 ? '' : 's'} to review',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: AppColors.textSecondary),
                 ),
               );
             }
@@ -86,15 +84,7 @@ class _ReviewList extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: _ReviewCardPreview(
                 item: item,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ReviewCardScreen(
-                      householdId: householdId,
-                      item: item,
-                    ),
-                  ),
-                ),
+                householdId: householdId,
               ),
             );
           },
@@ -104,135 +94,163 @@ class _ReviewList extends ConsumerWidget {
   }
 }
 
-class _ReviewCardPreview extends StatelessWidget {
-  final ExtractedItemModel item;
-  final VoidCallback onTap;
+class _ReviewCardPreview extends ConsumerWidget {
+  final ItemModel item;
+  final String householdId;
 
-  const _ReviewCardPreview({required this.item, required this.onTap});
-
-  Color get _typeColor => switch (item.itemType) {
-        ExtractedItemType.event => AppColors.primary,
-        ExtractedItemType.task => AppColors.warmYellow,
-        ExtractedItemType.deadline => AppColors.softCoral,
-        ExtractedItemType.payment => AppColors.softBlue,
-        ExtractedItemType.form => AppColors.primary,
-        ExtractedItemType.checklist => AppColors.softGreen,
-        ExtractedItemType.change => AppColors.warmYellow,
-        ExtractedItemType.risk => AppColors.softCoral,
-        _ => AppColors.textSecondary,
-      };
-
-  Color get _typeBgColor => switch (item.itemType) {
-        ExtractedItemType.event => AppColors.lavenderLight,
-        ExtractedItemType.task => AppColors.yellowLight,
-        ExtractedItemType.deadline => AppColors.coralLight,
-        ExtractedItemType.payment => AppColors.blueLight,
-        ExtractedItemType.form => AppColors.lavenderLight,
-        ExtractedItemType.checklist => AppColors.greenLight,
-        ExtractedItemType.change => AppColors.yellowLight,
-        ExtractedItemType.risk => AppColors.coralLight,
-        _ => AppColors.surfaceSoft,
-      };
-
-  IconData get _typeIcon => switch (item.itemType) {
-        ExtractedItemType.event => Icons.event_rounded,
-        ExtractedItemType.task => Icons.check_circle_outline_rounded,
-        ExtractedItemType.deadline => Icons.schedule_rounded,
-        ExtractedItemType.payment => Icons.payment_rounded,
-        ExtractedItemType.form => Icons.description_rounded,
-        ExtractedItemType.checklist => Icons.checklist_rounded,
-        ExtractedItemType.change => Icons.change_circle_rounded,
-        ExtractedItemType.risk => Icons.warning_rounded,
-        _ => Icons.inbox_rounded,
-      };
-
-  String get _typeLabel => switch (item.itemType) {
-        ExtractedItemType.event => 'Event',
-        ExtractedItemType.task => 'Task',
-        ExtractedItemType.deadline => 'Deadline',
-        ExtractedItemType.payment => 'Payment',
-        ExtractedItemType.form => 'Form',
-        ExtractedItemType.checklist => 'Checklist',
-        ExtractedItemType.change => 'Change',
-        ExtractedItemType.risk => 'Risk',
-        _ => 'Item',
-      };
+  const _ReviewCardPreview({
+    required this.item,
+    required this.householdId,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SoftCard(
-      onTap: onTap,
+      onTap: () => _onTap(context),
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: type chip + member
+          // Top row: type chip + child
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _typeBgColor,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(_typeIcon, size: 14, color: _typeColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      _typeLabel,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _typeColor),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (item.affectedMemberName != null)
-                CategoryChip(
-                  label: item.affectedMemberName!,
-                  color: AppColors.primary,
-                ),
+              _buildTypeChip(),
+              if (item.childName != null) ...[
+                const SizedBox(width: 8),
+                CategoryChip(label: item.childName!, color: AppColors.primary),
+              ],
               const Spacer(),
-              Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+              Icon(Icons.chevron_right_rounded,
+                  color: AppColors.textMuted, size: 20),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
 
-          // Summary
+          // Title
           Text(
-            item.operationalSummary,
+            item.title,
             style: Theme.of(context).textTheme.titleSmall,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
+
+          // Summary
+          if (item.summary != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              item.summary!,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColors.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
 
           // Uncertain fields warning
           if (item.uncertainFields.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                Icon(Icons.info_outline_rounded, size: 14, color: AppColors.warmYellow),
+                Icon(Icons.info_outline_rounded,
+                    size: 14, color: AppColors.warmYellow),
                 const SizedBox(width: 4),
                 Text(
                   '${item.uncertainFields.length} field${item.uncertainFields.length == 1 ? '' : 's'} to check',
-                  style: TextStyle(fontSize: 12, color: AppColors.warmYellow, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.warmYellow,
+                      fontWeight: FontWeight.w500),
                 ),
               ],
             ),
           ],
 
-          // Suggested next step
-          if (item.suggestedNextStep != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              item.suggestedNextStep!,
-              style: Theme.of(context).textTheme.bodySmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          const SizedBox(height: AppSpacing.lg),
+
+          // Quick approve row
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: () => _approve(context, ref),
+                  child: const Text('Approve'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () => _edit(context),
+                child: const Text('Edit'),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTypeChip() {
+    final (label, color, bg) = switch (item.type) {
+      ItemType.event => ('Event', AppColors.primary, AppColors.lavenderLight),
+      ItemType.task => ('Task', AppColors.warmYellow, AppColors.yellowLight),
+      ItemType.deadline =>
+        ('Deadline', AppColors.softCoral, AppColors.coralLight),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_typeIcon(), size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  IconData _typeIcon() => switch (item.type) {
+        ItemType.event => Icons.event_rounded,
+        ItemType.task => Icons.check_circle_outline_rounded,
+        ItemType.deadline => Icons.schedule_rounded,
+      };
+
+  void _onTap(BuildContext context) {
+    // If has source message, open review detail to see full context
+    if (item.sourceMessageId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReviewDetailScreen(
+            householdId: householdId,
+            sourceMessageId: item.sourceMessageId!,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _approve(BuildContext context, WidgetRef ref) async {
+    await ref.read(itemRepositoryProvider).approve(householdId, item.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Approved and added to feed.')));
+    }
+  }
+
+  void _edit(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditItemScreen(householdId: householdId, item: item),
       ),
     );
   }
@@ -251,11 +269,12 @@ class _EmptyState extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.greenLight,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.check_rounded, size: 40, color: AppColors.softGreen),
+              child: const Icon(Icons.check_rounded,
+                  size: 40, color: AppColors.softGreen),
             ),
             const SizedBox(height: 20),
             Text(
@@ -265,9 +284,10 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Nothing to review right now.\nCapture something to get started.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],

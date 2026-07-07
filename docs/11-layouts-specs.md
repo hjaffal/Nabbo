@@ -1,0 +1,411 @@
+# Layout Specifications
+
+Visual layout specs for key components in the Nabbo app.
+
+---
+
+## Item Card (Feed)
+
+The card that represents a single item in the Feed. Used for all statuses and types.
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│  ┌──────┐  Title                      [Status]    │
+│  │ Icon │  📍 Location  •  10:30       badge      │
+│  └──────┘  [Child photo+name] [Owner name]        │
+└────────────────────────────────────────────────────┘
+```
+
+### Elements
+
+| Element | Source | Visibility |
+|---------|--------|------------|
+| **Type icon** | Item type (event/task/deadline) | Always |
+| **Title** | `item.title` | Always |
+| **Status badge** | `item.status` → Analyzing / Review / Active / Done / Cancelled | Always |
+| **Child** | `item.childName` + child photo (from family member) + member color | If childName not null |
+| **Owner** | `item.ownerName` | If ownerName not null |
+| **Location** | `item.location` | If not null |
+| **Time** | `item.date` formatted as HH:MM | If date has a non-midnight time |
+| **Recurrence indicator** | Repeat icon | If item has recurrence rule |
+
+### Child Chip Color
+
+The child chip uses the family member's assigned `color` field:
+- Background: member color at 15% opacity
+- Text + initial avatar: member color at full opacity
+- If no color set: falls back to primary purple
+
+### Visual States
+
+| Status | Card background | Badge | Opacity |
+|--------|----------------|-------|---------|
+| Analyzing (source) | Blue tint | "Analyzing" blue | 1.0 |
+| `pendingReview` | Yellow tint | "Review" yellow | 1.0 |
+| `confirmed` | White/default | "Active" green | 1.0 |
+| `completed` | White/default | "Done" green | 0.6 |
+| `cancelled` | White/default | "Cancelled" coral | 0.5, title strikethrough |
+
+### Behavior
+
+- Tap pending → opens Review Detail screen
+- Tap confirmed/completed/cancelled → opens Item Detail screen
+- No swipe actions in v1
+
+---
+
+## Source Message Card (Feed — Analyzing state)
+
+Shown while AI is processing. Disappears when items are created.
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│  ┌──────┐  "Adam has football Friday…"  [Analyzing]│
+│  │Input │  Analyzing...                    badge   │
+│  │ icon │                                          │
+│  └──────┘                                          │
+└────────────────────────────────────────────────────┘
+```
+
+### Elements
+
+| Element | Source | Visibility |
+|---------|--------|------------|
+| **Input method icon** | `sourceMessage.inputMethod` (text/voice/email/image/share) | Always |
+| **Content preview** | `sourceMessage.originalContent` truncated to 80 chars | Always |
+| **Subtitle** | "Analyzing..." | Always |
+| **Status badge** | "Analyzing" blue | Always |
+
+### Visual
+
+- Blue tinted background
+- No child/owner chips (not yet extracted)
+
+---
+
+## Review Card (Review Tab + Review Detail)
+
+Used in the Review tab list and inside the Review Detail screen.
+
+### Layout (Review Tab — compact)
+
+```
+┌────────────────────────────────────────────────────┐
+│  [Event chip] [Child chip]                    ›    │
+│                                                    │
+│  Title of the item                                 │
+│  Summary text if available                         │
+│  ⚠ 2 fields to check                              │
+│                                                    │
+│  [  Approve  ]  [ Edit ]                           │
+└────────────────────────────────────────────────────┘
+```
+
+### Layout (Review Detail — expanded)
+
+```
+┌────────────────────────────────────────────────────┐
+│  [Event chip] [Child chip]                         │
+│                                                    │
+│  Title of the item                                 │
+│  Summary text if available                         │
+│                                                    │
+│  Date: 11/07/2026 at 18:30                         │
+│  Location: Sports Hall                             │
+│  Owner: —                                          │
+│  ⚠ 1 field to check                               │
+│                                                    │
+│  [   Approve   ]  [ Edit ]  [ Delete ]             │
+└────────────────────────────────────────────────────┘
+```
+
+### Elements
+
+| Element | Source | Visibility |
+|---------|--------|------------|
+| **Type chip** | `item.type` with color (purple/yellow/coral) | Always |
+| **Child chip** | `item.childName` | If not null |
+| **Title** | `item.title` | Always |
+| **Summary** | `item.summary` | If not null |
+| **Date** | `item.date` formatted | If not null (expanded only) |
+| **Location** | `item.location` | If not null (expanded only) |
+| **Owner** | `item.ownerName` or "—" | Expanded only |
+| **Uncertainty warning** | Count of `uncertainFields` | If uncertainFields not empty |
+| **Approve button** | Primary action | Always |
+| **Edit button** | Secondary action | Always |
+| **Delete button** | Destructive action | Expanded only |
+
+---
+
+## Item Detail Screen
+
+Full screen opened when tapping a confirmed/completed/cancelled item.
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│  ← Event                                  [Edit]   │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  ┌──────┐  Title of the event                      │
+│  │ Icon │  Summary text if available               │
+│  └──────┘                                          │
+│                                                    │
+│  [Active badge]                                    │
+│                                                    │
+│  ┌──────────────────────────────────────────────┐  │
+│  │  Type         Event                          │  │
+│  │  Child        Adam                           │  │
+│  │  Owner        Hassan                         │  │
+│  │  Date         11/07/2026 at 18:30            │  │
+│  │  End date     11/07/2026 at 19:30            │  │
+│  │  Location     Sports Hall                    │  │
+│  │  Recurrence   weekly on tuesday              │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
+│  ⚠ 1 field may need checking: location             │
+│                                                    │
+│  [      Mark complete      ]                       │
+│  [        Cancel           ]                       │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+### Elements
+
+| Element | Source | Visibility |
+|---------|--------|------------|
+| **App bar title** | Item type name | Always |
+| **Edit button** | Opens Edit screen | Always (app bar) |
+| **Type icon** | Based on `item.type` | Always |
+| **Title** | `item.title` (large) | Always |
+| **Summary** | `item.summary` | If not null |
+| **Status badge** | Colored pill based on `item.status` | Always |
+| **Fields card** | All non-null fields as label: value rows | Always |
+| **Uncertainty warning** | Yellow card with uncertain field names | If uncertainFields not empty |
+| **Mark complete button** | Sets status to completed | If status == confirmed |
+| **Cancel button** | Sets status to cancelled | If status == confirmed |
+| **Approve button** | Sets status to confirmed | If status == pendingReview |
+| **Delete button** | Deletes item | If status == pendingReview |
+
+### Field display rules
+
+- Show all fields that have a value
+- Null fields show as "— not set"
+- Dates formatted as DD/MM/YYYY at HH:MM
+- Recurrence shown as "weekly on tuesday" (human-readable)
+- `extractedFields` map entries shown as additional key: value rows
+
+---
+
+## Edit Item Screen
+
+Form screen for editing any item at any lifecycle stage.
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│  ← Edit                                  [Save]    │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  Type                                              │
+│  [ Event ] [ Task ] [ Deadline ]                   │
+│                                                    │
+│  Title                                             │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Football training                            │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
+│  Summary                                           │
+│  ┌──────────────────────────────────────────────┐  │
+│  │                                              │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
+│  Child (affected member)                           │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Adam                                         │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
+│  Owner (responsible parent)                        │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Hassan                                       │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
+│  Location                                          │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Sports Hall                                  │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
+│  Date & Time                                       │
+│  [ 11/07/2026 ]  [ 18:30 ]                        │
+│                                                    │
+│  [ Set end date (optional) ]                       │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+### Fields
+
+| Field | Input type | Required |
+|-------|-----------|----------|
+| Type | Segmented button (event/task/deadline) | Yes |
+| Title | Text field | Yes |
+| Summary | Text field (multiline) | No |
+| Child | Text field (future: dropdown of family members) | No |
+| Owner | Text field (future: dropdown of adults only) | No |
+| Location | Text field | No |
+| Date | Date picker | No |
+| Time | Time picker | No |
+| End date | Date picker | No |
+
+### Behavior
+
+- Save writes to Firestore via `ItemRepository.updateItem()`
+- Works at any lifecycle stage
+- Unsaved changes prompt discard confirmation (future)
+
+---
+
+## Feed Screen
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│  Good morning                                      │
+│  Your family feed                                  │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  [Needs Review]                                    │
+│  ┌─ Item Card (pendingReview) ─────────────────┐   │
+│  └─────────────────────────────────────────────┘   │
+│  ┌─ Item Card (pendingReview) ─────────────────┐   │
+│  └─────────────────────────────────────────────┘   │
+│                                                    │
+│  [Today]                                           │
+│  ┌─ Item Card (confirmed) ─────────────────────┐   │
+│  └─────────────────────────────────────────────┘   │
+│  ┌─ Item Card (confirmed) ─────────────────────┐   │
+│  └─────────────────────────────────────────────┘   │
+│                                                    │
+│  [Tomorrow]                                        │
+│  ┌─ Item Card (confirmed) ─────────────────────┐   │
+│  └─────────────────────────────────────────────┘   │
+│                                                    │
+│  [Wed, 9 Jul]                                      │
+│  ┌─ Item Card (confirmed) ─────────────────────┐   │
+│  └─────────────────────────────────────────────┘   │
+│                                                    │
+└────────────────────────────────────────────────────┘
+│  [Feed]  [Review]  [Settings]          [+ FAB]    │
+└────────────────────────────────────────────────────┘
+```
+
+### Sorting
+
+1. Analyzing source cards (newest first) — top
+2. Pending review items — below analyzing
+3. Confirmed items grouped by date (today → tomorrow → upcoming)
+
+### Date headers
+
+- Pill-shaped containers with text
+- Yellow background for "Needs Review" group
+- Grey background for date pills (Today, Tomorrow, Wed 9 Jul)
+
+---
+
+## FAB (Floating Action Button)
+
+### Closed state
+- Single "+" button, bottom-right
+- Rotates 45° to "×" when open
+
+### Open state (speed dial)
+
+```
+                          [Photo] 📷
+                          [Voice] 🎤
+                          [Text]  📝
+                              [×]
+```
+
+- 3 mini FABs appear above main FAB with labels
+- Text (closest), Voice (middle), Photo (top)
+- Tap outside or × to close
+- Each opens its respective capture sheet
+
+---
+
+## Review Detail Screen
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│  ← Review                              [Delete]    │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  ┌─ Original message ──────────────────────────┐   │
+│  │  "Adam has football Friday at Sports Hall.  │   │
+│  │   Bring blue jersey and water bottle."      │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                    │
+│  2 items to review                                 │
+│                                                    │
+│  ┌─ Review Card (expanded) ────────────────────┐   │
+│  │  [Event] [Adam]                             │   │
+│  │  Football training                          │   │
+│  │  Date: Friday at 18:30                      │   │
+│  │  Location: Sports Hall                      │   │
+│  │  [Approve] [Edit] [Delete]                  │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                    │
+│  ┌─ Review Card (expanded) ────────────────────┐   │
+│  │  [Task] [Adam]                              │   │
+│  │  Bring blue jersey and water bottle         │   │
+│  │  [Approve] [Edit] [Delete]                  │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+### States
+
+| Source status | What shows |
+|--------------|-----------|
+| pending/processing | Original message + "Analyzing..." spinner |
+| completed | Original message + extracted items with actions |
+| failed | Original message + error + "Try again" button |
+| noAction | Original message + "No clear action found" |
+
+---
+
+## Empty States
+
+### Feed (no items)
+
+```
+        ┌───┐
+        │ ✓ │  (green circle)
+        └───┘
+  Nothing in your feed yet.
+  Capture something to get started.
+```
+
+### Review (no pending)
+
+```
+        ┌───┐
+        │ ✓ │  (green circle)
+        └───┘
+       All caught up!
+  Nothing to review right now.
+  Capture something to get started.
+```

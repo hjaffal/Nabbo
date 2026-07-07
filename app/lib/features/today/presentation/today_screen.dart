@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -5,12 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/member_colors.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
-import '../../capture/data/models/source_message_model.dart';
+import '../../items/data/models/item_model.dart';
+import '../../items/data/repositories/item_repository.dart';
 import '../../review/presentation/review_detail_screen.dart';
-import 'feed_item_detail_screen.dart';
+import 'item_detail_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
   final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -38,29 +42,30 @@ class TodayScreen extends ConsumerWidget {
   }
 }
 
-/// Unified feed item
-class _FeedItem {
+/// Represents a single entry in the feed (either a source message or an item)
+class FeedEntry {
   final String id;
   final String title;
   final String? childName;
   final String? ownerName;
-  final String? subtitle;
+  final String? location;
   final DateTime? dateTime;
-  final String feedStatus; // pendingReview, confirmed, cancelled, completed, paid
-  final String type; // source, event, task, payment, requiredItem
+  final String feedStatus; // analyzing, pendingReview, confirmed, completed, cancelled
+  final String type; // source, event, task, deadline
   final IconData icon;
   final Color iconColor;
   final Color iconBg;
   final String? sourceMessageId;
-  final DocumentReference? docRef;
-  final Map<String, dynamic>? rawData;
+  final ItemModel? item;
+  final bool isSource;
+  final bool isRecurring;
 
-  _FeedItem({
+  FeedEntry({
     required this.id,
     required this.title,
     this.childName,
     this.ownerName,
-    this.subtitle,
+    this.location,
     this.dateTime,
     required this.feedStatus,
     required this.type,
@@ -68,13 +73,19 @@ class _FeedItem {
     required this.iconColor,
     required this.iconBg,
     this.sourceMessageId,
-    this.docRef,
-    this.rawData,
+    this.item,
+    this.isSource = false,
+    this.isRecurring = false,
   });
 
-  bool get isPending => feedStatus == 'pendingReview' || feedStatus == 'processing';
+  bool get isPending =>
+      feedStatus == 'analyzing' || feedStatus == 'pendingReview';
   bool get isCancelled => feedStatus == 'cancelled';
-  bool get isDone => feedStatus == 'completed' || feedStatus == 'paid';
+  bool get isDone => feedStatus == 'completed';
+
+  /// Returns true if dateTime has a non-midnight time component
+  bool get hasTime =>
+      dateTime != null && (dateTime!.hour != 0 || dateTime!.minute != 0);
 }
 
 class _FeedContent extends StatelessWidget {
@@ -86,25 +97,48 @@ class _FeedContent extends StatelessWidget {
     final db = FirebaseFirestore.instance;
     final householdRef = db.collection('households').doc(householdId);
 
-    return StreamBuilder<List<_FeedItem>>(
-      stream: _buildFeedStream(householdRef),
-      builder: (context, snapshot) {
-        final items = snapshot.data ?? [];
+    // Load member colors map (name → color hex)
+    return StreamBuilder<Map<String, String>>(
+      stream: householdRef.collection('members').snapshots().map((snap) {
+        final map = <String, String>{};
+        for (final doc in snap.docs) {
+          final data = doc.data();
+          final name = data['name'] as String?;
+          final color = data['color'] as String?;
+          if (name != null && color != null) {
+            map[name.toLowerCase()] = color;
+          }
+        }
+        return map;
+      }),
+      builder: (context, membersSnap) {
+        final memberColors = membersSnap.data ?? {};
 
-        return CustomScrollView(
-          slivers: [
-            // Header
-            SliverToBoxAdapter(
-              child: SafeArea(
-                bottom: false,
+        return StreamBuilder<List<FeedEntry>>(
+          stream: _buildFeedStream(householdRef),
+          builder: (context, snapshot) {
+            final items = snapshot.data ?? [];
+
+            return CustomScrollView(
+              slivers: [
+                // Header
+                SliverToBoxAdapter(
+                  child: SafeArea(
+                    bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_greeting(), style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                      Text(_greeting(),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: AppColors.textSecondary)),
                       const SizedBox(height: 4),
-                      Text('Your family feed', style: Theme.of(context).textTheme.headlineMedium),
+                      Text('Your family feed',
+                          style: Theme.of(context).textTheme.headlineMedium),
                       const SizedBox(height: AppSpacing.xl),
                     ],
                   ),
@@ -120,22 +154,29 @@ class _FeedContent extends StatelessWidget {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final item = items[index];
+                      final entry = items[index];
                       // Group by day
                       final showDateHeader = index == 0 ||
-                          !_isSameDay(items[index - 1].dateTime, item.dateTime);
+                          !_isSameDay(
+                              items[index - 1].dateTime, entry.dateTime) ||
+                          items[index - 1].isPending != entry.isPending;
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (showDateHeader) ...[
-                            if (index > 0) const SizedBox(height: AppSpacing.xl),
-                            _DateHeader(date: item.dateTime, isPending: item.isPending),
+                            if (index > 0)
+                              const SizedBox(height: AppSpacing.xl),
+                            _DateHeader(
+                                date: entry.dateTime,
+                                isPending: entry.isPending),
                             const SizedBox(height: AppSpacing.md),
                           ],
                           Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                            child: _FeedCard(item: item, householdId: householdId),
+                            padding:
+                                const EdgeInsets.only(bottom: AppSpacing.md),
+                            child: _FeedCard(
+                                entry: entry, householdId: householdId, memberColors: memberColors),
                           ),
                         ],
                       );
@@ -147,6 +188,8 @@ class _FeedContent extends StatelessWidget {
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
+        );
+          },
         );
       },
     );
@@ -165,123 +208,243 @@ class _FeedContent extends StatelessWidget {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  Stream<List<_FeedItem>> _buildFeedStream(DocumentReference householdRef) {
-    // 1. Source messages not yet fully approved/dismissed
-    final sourcesStream = householdRef.collection('sourceMessages')
+  Stream<List<FeedEntry>> _buildFeedStream(DocumentReference householdRef) {
+    // Stream 1: Source messages that are still being processed (analyzing state only)
+    // Once AI completes, the items themselves appear with pendingReview status
+    final sourcesStream = householdRef
+        .collection('sourceMessages')
         .orderBy('receivedAt', descending: true)
         .limit(20)
         .snapshots()
         .map((s) => s.docs
             .where((d) {
-              final status = (d.data())['processingStatus'] as String?;
-              // Only show pending, processing, completed (not approved/dismissed/failed/noActionFound)
-              return status == 'pending' || status == 'processing' || status == 'completed';
+              final data = d.data();
+              final status = data['processingStatus'] as String?;
+              // Only show pending/processing (analyzing state)
+              // completed sources are represented by their items in the items stream
+              return status == 'pending' || status == 'processing';
             })
             .map((d) => _mapSource(d))
             .toList());
 
-    // 2. Committed events (expand recurring)
-    final eventsStream = householdRef.collection('events')
+    // Stream 2: All items from items/ collection
+    // We fetch all and filter client-side to avoid composite index requirements
+    final itemsStream = householdRef
+        .collection('items')
         .snapshots()
-        .map((s) {
-          final items = <_FeedItem>[];
-          for (final doc in s.docs) {
-            final d = doc.data();
-            final recurrence = d['recurrence'] as String?;
-            if (recurrence != null && recurrence.isNotEmpty) {
-              items.addAll(_expandRecurring(doc));
-            } else {
-              items.add(_mapCommitted(doc, 'event', Icons.event_rounded, AppColors.primary, AppColors.lavenderLight));
-            }
+        .map((snapshot) {
+      final entries = <FeedEntry>[];
+      for (final doc in snapshot.docs) {
+        try {
+          final item = ItemModel.fromFirestore(doc);
+          // Skip items we don't want in the feed
+          // (currently we show all statuses per the spec)
+          // Expand recurring items
+          if (item.recurrence != null && item.status == ItemStatus.confirmed) {
+            entries.addAll(_expandRecurring(item));
+          } else {
+            entries.add(_mapItem(item));
           }
-          return items;
-        });
-
-    // 3. Committed tasks
-    final tasksStream = householdRef.collection('tasks')
-        .snapshots()
-        .map((s) => s.docs.map((d) => _mapCommitted(d, 'task', Icons.check_circle_outline_rounded, AppColors.warmYellow, AppColors.yellowLight)).toList());
-
-    // 4. Committed payments
-    final paymentsStream = householdRef.collection('payments')
-        .snapshots()
-        .map((s) => s.docs.map((d) => _mapCommitted(d, 'payment', Icons.payment_rounded, AppColors.softBlue, AppColors.blueLight)).toList());
-
-    return sourcesStream.asyncExpand((sources) {
-      return eventsStream.asyncExpand((events) {
-        return tasksStream.asyncExpand((tasks) {
-          return paymentsStream.map((payments) {
-            final all = [...sources, ...events, ...tasks, ...payments];
-            // Sort: pending items first, then chronologically (today → future)
-            all.sort((a, b) {
-              // Pending/analyzing always on top
-              if (a.isPending && !b.isPending) return -1;
-              if (!a.isPending && b.isPending) return 1;
-              // Then by date ascending (today first, then tomorrow, etc.)
-              if (a.dateTime == null && b.dateTime == null) return 0;
-              if (a.dateTime == null) return 1;
-              if (b.dateTime == null) return -1;
-              return a.dateTime!.compareTo(b.dateTime!);
-            });
-            return all;
-          });
-        });
-      });
+        } catch (_) {}
+      }
+      return entries;
     });
+
+    // Combine both streams using combineLatest pattern
+    return _combineLatest(sourcesStream, itemsStream);
   }
 
-  _FeedItem _mapSource(QueryDocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
-    final received = (d['receivedAt'] as Timestamp?)?.toDate();
-    final status = d['processingStatus'] ?? 'pending';
-    final isAnalyzing = status == 'pending' || status == 'processing';
+  /// Combines two streams, emitting latest combined value whenever either emits
+  Stream<List<FeedEntry>> _combineLatest(
+    Stream<List<FeedEntry>> sourcesStream,
+    Stream<List<FeedEntry>> itemsStream,
+  ) {
+    final controller = StreamController<List<FeedEntry>>();
+    List<FeedEntry> latestSources = [];
+    List<FeedEntry> latestItems = [];
+    bool hasSources = false;
+    bool hasItems = false;
 
-    return _FeedItem(
-      id: doc.id,
-      title: _truncate(d['originalContent'] ?? 'New capture', 80),
-      childName: null,
-      ownerName: null,
-      subtitle: isAnalyzing ? 'Analyzing...' : 'Needs review',
-      dateTime: received,
-      feedStatus: isAnalyzing ? 'processing' : 'pendingReview',
-      type: 'source',
-      icon: _inputIcon(d['inputMethod']),
-      iconColor: isAnalyzing ? AppColors.softBlue : AppColors.warmYellow,
-      iconBg: isAnalyzing ? AppColors.blueLight : AppColors.yellowLight,
-      sourceMessageId: doc.id,
-      rawData: d,
-    );
-  }
-
-  _FeedItem _mapCommitted(QueryDocumentSnapshot doc, String type, IconData icon, Color color, Color bg) {
-    final d = doc.data() as Map<String, dynamic>;
-    final status = d['status'] ?? 'confirmed';
-    final created = (d['createdAt'] as Timestamp?)?.toDate();
-    final startDt = (d['startDateTime'] as Timestamp?)?.toDate();
-    final dueDt = (d['dueDate'] as Timestamp?)?.toDate();
-
-    String? subtitle;
-    if (d['location'] != null) subtitle = '📍 ${d['location']}';
-    if (type == 'payment' && d['amount'] != null) {
-      subtitle = '${d['currency'] ?? 'EUR'} ${d['amount']}';
+    void emit() {
+      if (!hasSources && !hasItems) return;
+      final all = [...latestSources, ...latestItems];
+      all.sort((a, b) {
+        if (a.isPending && !b.isPending) return -1;
+        if (!a.isPending && b.isPending) return 1;
+        if (a.dateTime == null && b.dateTime == null) return 0;
+        if (a.dateTime == null) return 1;
+        if (b.dateTime == null) return -1;
+        return a.dateTime!.compareTo(b.dateTime!);
+      });
+      controller.add(all);
     }
 
-    return _FeedItem(
+    final sub1 = sourcesStream.listen(
+      (data) {
+        latestSources = data;
+        hasSources = true;
+        emit();
+      },
+      onError: (e) => controller.addError(e),
+    );
+    final sub2 = itemsStream.listen(
+      (data) {
+        latestItems = data;
+        hasItems = true;
+        emit();
+      },
+      onError: (e) => controller.addError(e),
+    );
+
+    controller.onCancel = () {
+      sub1.cancel();
+      sub2.cancel();
+    };
+
+    return controller.stream;
+  }
+
+  FeedEntry _mapSource(QueryDocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    final received = (d['receivedAt'] as Timestamp?)?.toDate();
+    final content = d['originalContent'] as String? ?? 'New capture';
+
+    return FeedEntry(
       id: doc.id,
-      title: d['title'] ?? type,
-      childName: d['affectedMemberName'],
-      ownerName: d['ownerName'],
-      subtitle: subtitle,
-      dateTime: startDt ?? dueDt ?? created,
-      feedStatus: status,
-      type: type,
-      icon: icon,
-      iconColor: status == 'cancelled' ? AppColors.textMuted : color,
-      iconBg: status == 'cancelled' ? AppColors.surfaceSoft : bg,
-      docRef: doc.reference,
-      rawData: d,
+      title: _truncate(content, 80),
+      dateTime: received,
+      feedStatus: 'analyzing',
+      type: 'source',
+      icon: _inputIcon(d['inputMethod']),
+      iconColor: AppColors.softBlue,
+      iconBg: AppColors.blueLight,
+      sourceMessageId: doc.id,
+      isSource: true,
     );
   }
+
+  FeedEntry _mapItem(ItemModel item) {
+    final typeInfo = _typeVisuals(item.type);
+
+    return FeedEntry(
+      id: item.id,
+      title: item.title,
+      childName: item.childName,
+      ownerName: item.ownerName,
+      location: item.location,
+      dateTime: item.date,
+      feedStatus: item.status.name,
+      type: item.type.name,
+      icon: typeInfo.$1,
+      iconColor: item.status == ItemStatus.cancelled
+          ? AppColors.textMuted
+          : typeInfo.$2,
+      iconBg: item.status == ItemStatus.cancelled
+          ? AppColors.surfaceSoft
+          : typeInfo.$3,
+      sourceMessageId: item.sourceMessageId,
+      item: item,
+      isRecurring: item.recurrence != null,
+    );
+  }
+
+  /// Expand a recurring item into multiple feed entries (next 4 weeks)
+  List<FeedEntry> _expandRecurring(ItemModel item) {
+    final rule = item.recurrence!;
+    final entries = <FeedEntry>[];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final hour = item.date?.hour ?? 0;
+    final minute = item.date?.minute ?? 0;
+
+    // Parse frequency and day
+    int? targetWeekday;
+    if (rule.frequency == 'weekly' && rule.dayOfWeek != null) {
+      final dayNames = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday'
+      ];
+      final idx = dayNames.indexOf(rule.dayOfWeek!.toLowerCase());
+      if (idx >= 0) targetWeekday = idx + 1;
+    }
+
+    if (targetWeekday == null) {
+      // Fallback: just show the item as-is
+      return [_mapItem(item)];
+    }
+
+    // Check end date
+    DateTime? endDate;
+    if (rule.endDate != null) {
+      endDate = DateTime.tryParse(rule.endDate!);
+    }
+
+    // Build set of cancelled dates from exceptions
+    final cancelledDates = <String>{};
+    for (final ex in item.exceptions) {
+      if (ex.status == 'cancelled') {
+        cancelledDates.add(ex.date);
+      }
+    }
+
+    for (int week = 0; week < 4; week++) {
+      var daysUntil = targetWeekday - today.weekday;
+      if (daysUntil < 0) daysUntil += 7;
+      final occDate = today.add(Duration(days: daysUntil + (week * 7)));
+      final occDateTime =
+          DateTime(occDate.year, occDate.month, occDate.day, hour, minute);
+
+      // Check if past end date
+      if (endDate != null && occDate.isAfter(endDate)) break;
+
+      // Check if cancelled
+      final dateStr =
+          '${occDate.year}-${occDate.month.toString().padLeft(2, '0')}-${occDate.day.toString().padLeft(2, '0')}';
+      if (cancelledDates.contains(dateStr)) continue;
+
+      final typeInfo = _typeVisuals(item.type);
+      entries.add(FeedEntry(
+        id: '${item.id}_w$week',
+        title: item.title,
+        location: item.location,
+        childName: item.childName,
+        ownerName: item.ownerName,
+        dateTime: occDateTime,
+        feedStatus: 'confirmed',
+        type: item.type.name,
+        icon: Icons.repeat_rounded,
+        iconColor: typeInfo.$2,
+        iconBg: typeInfo.$3,
+        item: item,
+        isRecurring: true,
+      ));
+    }
+
+    return entries;
+  }
+
+  (IconData, Color, Color) _typeVisuals(ItemType type) => switch (type) {
+        ItemType.event => (
+            Icons.event_rounded,
+            AppColors.primary,
+            AppColors.lavenderLight
+          ),
+        ItemType.task => (
+            Icons.check_circle_outline_rounded,
+            AppColors.warmYellow,
+            AppColors.yellowLight
+          ),
+        ItemType.deadline => (
+            Icons.schedule_rounded,
+            AppColors.softCoral,
+            AppColors.coralLight
+          ),
+      };
 
   IconData _inputIcon(String? method) => switch (method) {
         'freeText' => Icons.edit_note_rounded,
@@ -292,61 +455,8 @@ class _FeedContent extends StatelessWidget {
         _ => Icons.inbox_rounded,
       };
 
-  /// Expand a recurring event into multiple feed items (one per week for 4 weeks)
-  List<_FeedItem> _expandRecurring(QueryDocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
-    final recurrence = d['recurrence'] as String? ?? '';
-    final baseTime = (d['startDateTime'] as Timestamp?)?.toDate();
-    final status = d['status'] ?? 'confirmed';
-
-    // Parse which weekday from recurrence string
-    final lowerRec = recurrence.toLowerCase();
-    final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    int? targetWeekday;
-    for (int i = 0; i < dayNames.length; i++) {
-      if (lowerRec.contains(dayNames[i])) {
-        targetWeekday = i + 1; // 1=Mon, 7=Sun
-        break;
-      }
-    }
-
-    if (targetWeekday == null) {
-      return [_mapCommitted(doc, 'event', Icons.event_rounded, AppColors.primary, AppColors.lavenderLight)];
-    }
-
-    final items = <_FeedItem>[];
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final hour = baseTime?.hour ?? 0;
-    final minute = baseTime?.minute ?? 0;
-
-    for (int week = 0; week < 4; week++) {
-      var daysUntil = targetWeekday - today.weekday;
-      if (daysUntil < 0) daysUntil += 7;
-      final occDate = today.add(Duration(days: daysUntil + (week * 7)));
-      final occDateTime = DateTime(occDate.year, occDate.month, occDate.day, hour, minute);
-
-      items.add(_FeedItem(
-        id: '${doc.id}_w$week',
-        title: d['title'] ?? 'Event',
-        subtitle: d['location'] != null ? '📍 ${d['location']}' : null,
-        childName: d['affectedMemberName'],
-        ownerName: d['ownerName'],
-        dateTime: occDateTime,
-        feedStatus: status,
-        type: 'event',
-        icon: Icons.repeat_rounded,
-        iconColor: AppColors.primary,
-        iconBg: AppColors.lavenderLight,
-        docRef: doc.reference,
-        rawData: d,
-      ));
-    }
-
-    return items;
-  }
-
-  String _truncate(String s, int max) => s.length > max ? '${s.substring(0, max)}...' : s;
+  String _truncate(String s, int max) =>
+      s.length > max ? '${s.substring(0, max)}...' : s;
 }
 
 // --- Date Header ---
@@ -384,37 +494,41 @@ class _DateHeader extends StatelessWidget {
     if (itemDay == tomorrow) return 'Tomorrow';
 
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
     return '${weekdays[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
   }
 }
 
 // --- Feed Card ---
 class _FeedCard extends StatelessWidget {
-  final _FeedItem item;
+  final FeedEntry entry;
   final String householdId;
-  const _FeedCard({required this.item, required this.householdId});
+  final Map<String, String> memberColors;
+  const _FeedCard({required this.entry, required this.householdId, required this.memberColors});
 
   @override
   Widget build(BuildContext context) {
     return Opacity(
-      opacity: item.isCancelled ? 0.5 : (item.isDone ? 0.6 : 1.0),
+      opacity: entry.isCancelled ? 0.5 : (entry.isDone ? 0.6 : 1.0),
       child: SoftCard(
         onTap: () => _onTap(context),
-        color: item.isPending ? AppColors.yellowLight : null,
+        color: entry.isPending ? AppColors.yellowLight : null,
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon
+            // Type icon
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: item.iconBg,
+                color: entry.iconBg,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               ),
-              child: Icon(item.icon, color: item.iconColor, size: 20),
+              child: Icon(entry.icon, color: entry.iconColor, size: 20),
             ),
             const SizedBox(width: AppSpacing.md),
 
@@ -425,36 +539,86 @@ class _FeedCard extends StatelessWidget {
                 children: [
                   // Title
                   Text(
-                    item.title,
+                    entry.title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          decoration: item.isCancelled ? TextDecoration.lineThrough : null,
+                          decoration: entry.isCancelled
+                              ? TextDecoration.lineThrough
+                              : null,
                         ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
 
-                  // Subtitle
-                  if (item.subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      item.subtitle!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: item.isPending ? AppColors.warmYellow : AppColors.textSecondary,
-                            fontWeight: item.isPending ? FontWeight.w600 : null,
+                  // Location + time row
+                  if (entry.location != null || entry.hasTime || entry.isSource) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (entry.isSource) ...[
+                          Text(
+                            'Analyzing...',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.softBlue,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
+                        ] else ...[
+                          if (entry.location != null) ...[
+                            Icon(Icons.place_rounded,
+                                size: 13, color: AppColors.textMuted),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                entry.location!,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: AppColors.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                          if (entry.location != null && entry.hasTime)
+                            Text('  •  ',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: AppColors.textMuted)),
+                          if (entry.hasTime)
+                            Text(
+                              _formatTime(entry.dateTime!),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            ),
+                          if (entry.isRecurring) ...[
+                            const SizedBox(width: 6),
+                            Icon(Icons.repeat_rounded,
+                                size: 13, color: AppColors.textMuted),
+                          ],
+                        ],
+                      ],
                     ),
                   ],
 
                   // Child + Owner chips
-                  if (item.childName != null || item.ownerName != null) ...[
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
+                  if (entry.childName != null || entry.ownerName != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
                       children: [
-                        if (item.childName != null)
-                          CategoryChip(label: item.childName!, color: AppColors.primary),
-                        if (item.ownerName != null)
-                          CategoryChip(label: item.ownerName!, color: AppColors.softGreen),
+                        if (entry.childName != null) ...[
+                          _ChildChip(
+                            name: entry.childName!,
+                            colorHex: memberColors[entry.childName!.toLowerCase()],
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        if (entry.ownerName != null)
+                          CategoryChip(
+                              label: entry.ownerName!,
+                              color: AppColors.softGreen),
                       ],
                     ),
                   ],
@@ -462,65 +626,122 @@ class _FeedCard extends StatelessWidget {
               ),
             ),
 
-            // Right side: status badge
-            _StatusBadge(item: item),
+            // Status badge
+            const SizedBox(width: 8),
+            _StatusBadge(entry: entry),
           ],
         ),
       ),
     );
   }
 
+  String _formatTime(DateTime dt) {
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
   void _onTap(BuildContext context) {
-    if (item.type == 'source') {
-      // Open review detail for source messages
+    if (entry.isSource) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => ReviewDetailScreen(
             householdId: householdId,
-            sourceMessageId: item.id,
+            sourceMessageId: entry.id,
           ),
         ),
       );
+    } else if (entry.feedStatus == 'pendingReview') {
+      if (entry.sourceMessageId != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ReviewDetailScreen(
+              householdId: householdId,
+              sourceMessageId: entry.sourceMessageId!,
+            ),
+          ),
+        );
+      } else if (entry.item != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ItemDetailScreen(
+              householdId: householdId,
+              item: entry.item!,
+            ),
+          ),
+        );
+      }
     } else {
-      // Open full screen detail for committed items
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => FeedItemDetailScreen(
-            title: item.title,
-            type: item.type,
-            childName: item.childName,
-            ownerName: item.ownerName,
-            subtitle: item.subtitle,
-            feedStatus: item.feedStatus,
-            icon: item.icon,
-            iconColor: item.iconColor,
-            iconBg: item.iconBg,
-            docRef: item.docRef,
-            rawData: item.rawData,
+      if (entry.item != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ItemDetailScreen(
+              householdId: householdId,
+              item: entry.item!,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
+}
 
+/// Child chip with initial avatar using member's assigned color
+class _ChildChip extends StatelessWidget {
+  final String name;
+  final String? colorHex;
+  const _ChildChip({required this.name, this.colorHex});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final color = MemberColors.fromHex(colorHex);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 10,
+            backgroundColor: color,
+            child: Text(initial,
+                style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white)),
+          ),
+          const SizedBox(width: 4),
+          Text(name,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color)),
+        ],
+      ),
+    );
+  }
 }
 
 // --- Status Badge ---
 class _StatusBadge extends StatelessWidget {
-  final _FeedItem item;
-  const _StatusBadge({required this.item});
+  final FeedEntry entry;
+  const _StatusBadge({required this.entry});
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (item.feedStatus) {
+    final (label, color) = switch (entry.feedStatus) {
+      'analyzing' => ('Analyzing', AppColors.softBlue),
       'pendingReview' => ('Review', AppColors.warmYellow),
-      'processing' => ('Processing', AppColors.softBlue),
       'confirmed' => ('Active', AppColors.softGreen),
       'cancelled' => ('Cancelled', AppColors.softCoral),
       'completed' => ('Done', AppColors.softGreen),
-      'paid' => ('Paid', AppColors.softGreen),
       _ => ('', AppColors.textMuted),
     };
 
@@ -532,7 +753,9 @@ class _StatusBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }
@@ -549,11 +772,23 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(padding: const EdgeInsets.all(20), decoration: const BoxDecoration(color: AppColors.greenLight, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, size: 40, color: AppColors.softGreen)),
+            Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                    color: AppColors.greenLight, shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded,
+                    size: 40, color: AppColors.softGreen)),
             const SizedBox(height: 20),
-            Text('Nothing in your feed yet.', style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+            Text('Nothing in your feed yet.',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text('Capture something to get started.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary), textAlign: TextAlign.center),
+            Text('Capture something to get started.',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center),
           ],
         ),
       ),

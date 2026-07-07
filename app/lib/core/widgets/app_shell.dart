@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,20 +22,22 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  late ShareHandler _shareHandler;
+  ShareHandler? _shareHandler;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _shareHandler = ShareHandler(ref: ref, context: context);
-      _shareHandler.initialize();
-    });
+    if (!kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _shareHandler = ShareHandler(ref: ref, context: context);
+        _shareHandler!.initialize();
+      });
+    }
   }
 
   @override
   void dispose() {
-    _shareHandler.dispose();
+    _shareHandler?.dispose();
     super.dispose();
   }
 

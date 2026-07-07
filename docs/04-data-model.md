@@ -2,428 +2,325 @@
 
 ## Core Principle
 
-Nabbo is **action-first, not calendar-first**.
+Nabbo uses **two Firestore collections** per household. This keeps the architecture simple, queries fast, and the codebase maintainable.
 
-A calendar event is only one possible output. The product must also understand tasks, deadlines, required items, forms, payments, changes, risks, owners, routines, and source messages.
-
-The core question is not "When is this happening?" — it's **"What does this mean for the household, and what needs to happen next?"**
-
----
-
-## Object Overview
-
-| # | Object | Purpose |
-|---|--------|---------|
-| 1 | Household | Top-level container for one family unit |
-| 2 | Family Member | Any person connected to the household |
-| 3 | Source Message | Raw input sent into Nabbo |
-| 4 | Extracted Item | Nabbo's first structured interpretation (pre-review) |
-| 5 | Decision Status | What the user did with an extracted item |
-| 6 | Event | Something scheduled at a specific time |
-| 7 | Task | An action that needs to be completed |
-| 8 | Deadline | A time-sensitive requirement |
-| 9 | Required Item | Something to bring, pack, prepare, buy, print, sign |
-| 10 | Checklist | Grouped set of required items or preparation actions |
-| 11 | Form | Document/approval to read, sign, complete, submit |
-| 12 | Payment | Money-related action |
-| 13 | Location | Place linked to an event, task, or routine |
-| 14 | Owner | Person responsible for an action |
-| 15 | Reminder | Prompt to act at the right time |
-| 16 | Change | Detected difference between new and existing info |
-| 17 | Risk | Potential household failure point |
-| 18 | Routine | Repeated family pattern Nabbo can learn |
-| 19 | Household Plan | Current operational view (daily/weekly) |
-| 20 | Completion | Tracks whether something has been resolved |
+```
+households/{householdId}/sourceMessages/{id}   ← raw captured inputs
+households/{householdId}/items/{id}            ← everything: extracted, reviewed, committed
+```
 
 ---
 
-## Object 1: Household
+## Collection 1: Source Messages
 
-The top-level container. All people, messages, actions, routines, plans, risks, and history belong to a household.
+A Source Message is the raw input sent into Nabbo. It is the **trust anchor** — the original content the parent shared.
 
-**Key Fields:**
-- Household ID
-- Household name
-- Primary user
-- Members
-- Timezone
-- Default language
-- Notification preferences
-- Shared Nabbo email alias
-- Household routines
-- Household locations
-- Status
+### Fields
 
----
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Document ID |
+| `householdId` | string | Parent household |
+| `submittedBy` | string | User ID who captured this |
+| `inputMethod` | enum | How it entered Nabbo |
+| `originalContent` | string | The raw text/transcript |
+| `attachmentUrl` | string? | URL to uploaded file (image, PDF, audio) |
+| `attachmentType` | string? | Type of attachment (image, pdf, audio) |
+| `sourceApp` | string? | Detected source app (WhatsApp, email, etc.) |
+| `processingStatus` | enum | Current processing state |
+| `receivedAt` | Timestamp | When it was captured |
+| `processedAt` | Timestamp? | When AI finished processing |
 
-## Object 2: Family Member
+### Processing Status Enum
 
-Any person connected to the household.
+| Value | Meaning |
+|-------|---------|
+| `pending` | Just captured, waiting for AI |
+| `processing` | AI is currently analyzing |
+| `completed` | AI finished, items created |
+| `failed` | AI failed to process |
+| `noAction` | AI found nothing actionable |
+| `dismissed` | User deleted/dismissed the capture |
 
-**Key Fields:**
-- Member ID, Name, Role, Age group
-- Relationship to household
-- Contact method, Permissions
-- Default responsibilities
-- Linked routines
-- Color / visual identifier
-- Status
+### Input Method Enum
 
-**Roles:** Primary parent, Secondary parent, Child, Caregiver, Grandparent, Babysitter, Other trusted person
-
----
-
-## Object 3: Source Message
-
-The raw input sent into Nabbo — the **trust anchor**.
-
-**Key Fields:**
-- Source message ID, Household ID
-- Submitted by
-- Input method (mobile share, email forwarding, free text, voice, image, screenshot, PDF)
-- Original content, Attachment type
-- Source app or channel
-- Received / processed timestamps
-- Language, Extracted text
-- Processing status
-- Linked extracted objects
-- Confidence summary, Privacy status
-
-> The source message must always allow the parent to see where an extracted action came from.
+| Value | Description |
+|-------|-------------|
+| `freeText` | Typed note inside the app |
+| `voice` | Voice transcription |
+| `emailForwarding` | Forwarded email via SendGrid |
+| `mobileShare` | Shared from another app |
+| `imageUpload` | Photo or screenshot |
 
 ---
 
-## Object 4: Extracted Item
+## Collection 2: Items
 
-Nabbo's first structured interpretation — sits in the review layer until the parent decides.
+An Item is **everything** — from the moment AI extracts it (pending review) through the user's approval and into execution. There is no copy between collections. The lifecycle is managed via the `status` field.
 
-One source message can create **multiple** extracted items.
+### Fields
 
-**Key Fields:**
-- Extracted item ID, Source message ID, Household ID
-- Affected family member
-- Item type (Event, Task, Deadline, Required item, Payment, Form, Location update, Change, Risk, Routine suggestion)
-- Extracted summary
-- Detected: date, time, location, action, required items, deadline, payment, form, owner, urgency, change, risk
-- Confidence level, Uncertain fields
-- Suggested next step
-- Review status
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Document ID |
+| `householdId` | string | Parent household |
+| `type` | enum | What kind of item this is |
+| `status` | enum | Lifecycle state |
+| `title` | string | Short action-focused title |
+| `summary` | string? | Longer operational summary from AI |
+| `childId` | string? | ID of affected family member (child) |
+| `childName` | string? | Name of affected child |
+| `ownerId` | string? | ID of responsible parent/adult |
+| `ownerName` | string? | Name of responsible parent/adult |
+| `date` | Timestamp? | Primary date/time for this item |
+| `endDate` | Timestamp? | End time (for events with duration) |
+| `location` | string? | Where this happens |
+| `recurrence` | map? | Recurrence rule (see below) |
+| `exceptions` | array? | Modified/cancelled single occurrences |
+| `sourceMessageId` | string? | Link back to original capture |
+| `action` | string? | `create`, `update`, or `cancel` (defaults to `create`) |
+| `targetItemId` | string? | ID of existing item being changed (update/cancel only) |
+| `targetItemTitle` | string? | Title of existing item for matching |
+| `changes` | map? | Fields being changed with new values (update only) |
+| `previousValues` | map? | Fields being changed with old values (update only) |
+| `extractedFields` | map | All AI-detected fields as key-value pairs |
+| `confidence` | map? | Per-field confidence: { fieldName: "high"\|"medium"\|"low"\|"unknown" } |
+| `uncertainFields` | array? | List of field names AI was unsure about |
+| `suggestedActions` | array? | AI-suggested next steps |
+| `createdAt` | Timestamp | When created |
+| `updatedAt` | Timestamp? | Last modification |
 
----
+### Item Type Enum
 
-## Object 5: Decision Status
+| Value | Description | Example |
+|-------|-------------|---------|
+| `event` | Something scheduled at a specific time | "Basketball training Tuesday 17:30" |
+| `task` | An action someone must complete (includes things to bring/pack) | "Pack towel and goggles", "Reply to teacher" |
+| `deadline` | A hard due date that triggers reminders | "Permission form due Wednesday" |
 
-Tracks what the user did with an extracted item.
+### Item Status Enum
 
-**Key Fields:**
-- Decision ID, Extracted item ID
-- Status (Pending review, Approved, Edited and approved, Dismissed, Snoozed, Assigned, Already handled, Needs clarification)
-- Decision made by, timestamp
-- Edited fields, Dismissal reason, Snooze date, Notes
+| Value | Meaning |
+|-------|---------|
+| `pendingReview` | AI extracted this, waiting for parent to verify |
+| `confirmed` | Parent approved, part of the household plan |
+| `completed` | Action done (task finished, item packed, etc.) |
+| `cancelled` | Cancelled (event cancelled, no longer needed) |
 
----
+### Lifecycle
 
-## Object 6: Event
+```
+AI extracts → status: pendingReview
+    ↓ (user approves)
+status: confirmed (appears in Feed as active)
+    ↓ (user marks done OR event passes)
+status: completed
+    ↓ (alternatively: user cancels)
+status: cancelled (shown with strikethrough in Feed)
+```
 
-Something scheduled at a specific time or period.
-
-**Key Fields:**
-- Event ID, Household ID, Title
-- Affected family member
-- Start/end date and time
-- Location, Owner
-- Related: source message, tasks, checklist, required items, payment, form
-- Recurrence, Confidence level
-- Change history, Reminder settings
-- Status (Pending, Confirmed, Changed, Cancelled, Completed, Missed)
-
-> Many family messages contain events, but the event alone is not enough. The value comes from linking the event to preparation, ownership, risks, and changes.
-
----
-
-## Object 7: Task
-
-An action that needs to be completed. May or may not be linked to an event.
-
-**Key Fields:**
-- Task ID, Household ID, Title, Description
-- Affected family member, Owner
-- Due date/time, Priority
-- Related: event, source message, form, payment, checklist
-- Completion status, Reminder settings
-- Status (Open, Assigned, In progress, Completed, Dismissed, Overdue, Blocked)
-
-> "Sign the form," "pay €10," "pack blue jersey," "reply to teacher" — these are tasks, not events.
-
----
-
-## Object 8: Deadline
-
-A time-sensitive requirement.
-
-**Key Fields:**
-- Deadline ID, Household ID, Title
-- Due date/time
-- Affected family member, Owner
-- Related: task, form, payment, event, source message
-- Urgency level, Reminder schedule
-- Status (Upcoming, Due today, Overdue, Completed, Dismissed)
+**Editing:** Users can edit any item at any point in the lifecycle — whether it's pending review, confirmed, completed, or cancelled. Editing does not change the status.
 
 ---
 
-## Object 9: Required Item
+## Recurrence
 
-Something that must be brought, prepared, packed, bought, printed, signed, or available.
+For recurring items (e.g., "basketball every Tuesday"), the item stores a **recurrence rule**. The Feed expands it into virtual occurrences client-side.
 
-**Key Fields:**
-- Required item ID, Household ID
-- Item name, Quantity
-- Affected family member
-- Related: event, checklist, source message
-- Owner, Needed by date/time
-- Packed status
-- Category (Clothing, Sports gear, School material, Food/drink, Document, Money, Medicine, Device, Other)
-- Recurring item flag, Suggested by system, Confidence
+### Recurrence Map
 
----
+| Field | Type | Description |
+|-------|------|-------------|
+| `frequency` | string | `weekly` \| `daily` \| `biweekly` \| `monthly` |
+| `dayOfWeek` | string? | Day name (for weekly): `monday` through `sunday` |
+| `startDate` | string | ISO date when recurrence begins (YYYY-MM-DD) |
+| `endDate` | string? | ISO date when recurrence ends (null = ongoing) |
 
-## Object 10: Checklist
+### Exceptions Array
 
-Grouped set of required items or preparation actions.
+Each entry represents a single occurrence that differs from the rule:
 
-**Key Fields:**
-- Checklist ID, Household ID, Title
-- Type (Morning launch, Evening reset, Sports activity, School trip, Weekend plan, Travel, Daily departure, Event preparation)
-- Affected family member
-- Related: event, routine
-- Items, Owner, Date
-- Completion status
-- Created manually or automatically
+```json
+{
+  "date": "2026-07-22",
+  "status": "cancelled"
+}
+```
 
----
+Or an override:
 
-## Object 11: Form
+```json
+{
+  "date": "2026-08-05",
+  "overrides": {
+    "time": "18:00",
+    "location": "Sports Hall B"
+  }
+}
+```
 
-A document or approval that needs action.
+### Feed Expansion Logic
 
-**Key Fields:**
-- Form ID, Household ID, Title
-- Affected family member, Source message
-- Related: event, deadline
-- Owner, Required action (Read, Sign, Print, Upload, Return to school, Submit online, Bring physically)
-- Submission method, Due date
-- Status (Not started, In progress, Completed, Submitted, Overdue, Dismissed)
-- Attachment, Reminder settings
+1. Read recurrence rule from item
+2. Generate occurrences from `startDate` to min(`endDate`, now + 4 weeks)
+3. For each occurrence date, check `exceptions`:
+   - If `status: cancelled` → skip this date
+   - If `overrides` exist → apply them to the card
+4. Each occurrence renders as a separate card in the Feed under its day header
 
----
+### Modification Rules
 
-## Object 12: Payment
-
-A money-related action.
-
-**Key Fields:**
-- Payment ID, Household ID, Title
-- Amount, Currency
-- Affected family member
-- Related: event, source message, deadline
-- Owner, Payment method, Payment link
-- Due date
-- Status (Pending, Paid, Overdue, Dismissed, Unknown)
+| Action | What happens |
+|--------|-------------|
+| Cancel one occurrence | Add `{ date, status: "cancelled" }` to exceptions |
+| Modify one occurrence | Add `{ date, overrides: {...} }` to exceptions |
+| Cancel entire series | Set item `status: "cancelled"` |
+| Edit the series | Update the item's fields (affects all future occurrences) |
 
 ---
 
-## Object 13: Location
+## Family Members
 
-A place linked to events, tasks, pickups, drop-offs, schools, clubs, or routines.
+Stored in `households/{householdId}/members/{memberId}`.
 
-**Key Fields:**
-- Location ID, Household ID
-- Name, Address
-- Type (Home, School, Sports club, Activity venue, Doctor, Caregiver location, Pickup point, Drop-off point, Other)
-- Linked: family members, routines, events
-- Travel notes, Default travel time
-- Confidence level
+### Fields
 
----
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Document ID |
+| `householdId` | string | Parent household |
+| `name` | string | Display name |
+| `role` | enum | `primaryParent`, `secondaryParent`, `child`, `caregiver`, `grandparent`, `babysitter`, `other` |
+| `ageGroup` | enum? | `toddler`, `child`, `teenager`, `adult` |
+| `photoUrl` | string? | Profile photo URL (uploaded to Cloud Storage) |
+| `color` | string | Hex color code (e.g., `#7B61D9`). Randomly assigned on creation, editable by user. |
+| `defaultResponsibilities` | array | Default responsibilities for this member |
+| `createdAt` | Timestamp | When added |
 
-## Object 14: Owner
+### Color Assignment
 
-The person responsible for an action.
-
-**Key Fields:**
-- Owner ID
-- Person assigned
-- Assigned object type and ID
-- Assigned by, timestamp
-- Status (Assigned, Accepted, Declined, Completed, Unassigned, Needs reassignment)
-- Completion confirmation, Escalation status
-
-> A task without an owner is not handled. It is only stored.
-
----
-
-## Object 15: Reminder
-
-A prompt to act at the right time — linked to specific actions, not generic alerts.
-
-**Key Fields:**
-- Reminder ID, Household ID
-- Related object type and ID
-- Recipient, Reminder time
-- Type (Task, Deadline, Departure, Checklist, Payment, Form, Change, Owner reminder)
-- Message, Status (Scheduled, Sent, Dismissed, Completed, Failed)
-- Channel
-
-> No reminder without an action.
+- When a family member is created, a **random color** is assigned from a predefined palette
+- The user can change the color via the Edit Family Member screen in Settings (color picker)
+- This color is used in the app to visually identify the member:
+  - Item card child chip (background tint + text color)
+  - Review card child chip
+  - Item detail screen child field
+- Palette (soft, warm, distinct colors that work on light backgrounds):
+  - `#7B61D9` (purple)
+  - `#FF6B6B` (coral)
+  - `#4ECDC4` (teal)
+  - `#FFB347` (orange)
+  - `#77DD77` (green)
+  - `#6BB5FF` (blue)
+  - `#FF85A2` (pink)
+  - `#B19CD9` (lavender)
 
 ---
 
-## Object 16: Change
-
-A detected difference between new information and existing household information.
-
-**Key Fields:**
-- Change ID, Household ID
-- Related object type and ID
-- Source message
-- Previous value, New value
-- Change type (Time, Date, Location, Required item added/removed, Deadline, Event cancelled, Owner, Payment, Form requirement added)
-- Detected timestamp, Confidence level
-- Impact level, Review status
-
-> Change detection is one of Nabbo's strongest differentiators.
-
----
-
-## Object 17: Risk
-
-A potential household failure point.
-
-**Key Fields:**
-- Risk ID, Household ID
-- Title, Description
-- Affected family member, Related objects
-- Type (No owner, Deadline near, Deadline overdue, Conflicting events, Location changed, Required item not packed, Payment unpaid, Form incomplete, Travel time risk, Missing/contradictory information)
-- Severity, Suggested action
-- Owner, Status (Open, Acknowledged, Resolved, Dismissed)
-
-> Calendars show what is planned. Nabbo shows what might fail.
-
----
-
-## Object 18: Routine
-
-A repeated family pattern Nabbo can learn and reuse.
-
-**Key Fields:**
-- Routine ID, Household ID
-- Name, Affected family member
-- Type (School day, Sports activity, Music lesson, Swimming, Weekend activity, Morning launch, Evening reset, Pickup routine, Travel routine)
-- Frequency, Common location
-- Common required items
-- Default owner, Default checklist
-- Linked events, Confidence level, Last used date
-
----
-
-## Object 19: Household Plan
-
-The current operational view — combines everything into a daily/weekly plan.
-
-**Key Fields:**
-- Plan ID, Household ID
-- Plan date or period
-- Type (Today, Tomorrow, This week, Morning launch, Evening reset, Weekend plan)
-- Events, Tasks, Deadlines, Checklists
-- Risks, Unassigned items, Changes
-- Completed items, Open items
-- Generated summary
-
----
-
-## Object 20: Completion
-
-Tracks whether an action has been resolved.
-
-**Key Fields:**
-- Completion ID
-- Related object type and ID
-- Completed by, timestamp
-- Method, Notes
-- Evidence attachment
-- Confirmation status
-
----
-
-## Object Relationships
+## Relationships
 
 ```
 Household
-├── Family Members
-├── Source Messages
-│   └── Extracted Items
-│       └── Decision Status
-│       └── Committed Objects (Event, Task, Deadline, Form, Payment, etc.)
-├── Events
-│   ├── Tasks
-│   ├── Required Items
-│   ├── Checklists
-│   ├── Reminders
-│   └── Risks
-├── Routines
-│   └── Suggested: events, tasks, checklists, items, reminders
-├── Changes
-├── Risks
-└── Household Plan (combines all for a time period)
+├── Family Members (subcollection: members/)
+│   └── Each member has: name, role, ageGroup, photoUrl, color
+├── Source Messages (subcollection: sourceMessages/)
+│   └── linked to Items via item.sourceMessageId
+└── Items (subcollection: items/)
+    ├── childId → references a family member
+    ├── ownerId → references a family member (parent/adult only)
+    └── sourceMessageId → references a source message
+```
+
+### Key Relationships
+
+- **Item → Source Message**: Every item has `sourceMessageId` for traceability (except manually created items)
+- **Item → Child**: `childId`/`childName` = which family member this is ABOUT
+- **Item → Owner**: `ownerId`/`ownerName` = which adult is RESPONSIBLE (parents/caregivers only, never children)
+
+---
+
+## Queries
+
+### Feed Query (main screen)
+
+```
+items where status in ['pendingReview', 'confirmed']
+  order by date ascending
+```
+
+Shows: pending items first (no date), then chronological.
+
+### Completed/History
+
+```
+items where status in ['completed', 'cancelled']
+  order by updatedAt descending
+```
+
+### By Child
+
+```
+items where childId == {memberId} and status == 'confirmed'
+```
+
+### Overdue/Urgent
+
+```
+items where type == 'deadline' and status == 'confirmed' and date < now
 ```
 
 ---
 
-## Object Lifecycle
+## What Happens at Each Stage
 
-### Extracted Items
-Captured → Processed → Pending review → Approved / Edited / Dismissed / Snoozed → Committed
+### 1. Capture
 
-### Tasks
-Created → Assigned → Open → Completed / Overdue / Dismissed
+User captures content → `sourceMessages/` document created with `processingStatus: pending`
 
-### Events
-Detected → Pending review → Confirmed → Changed / Completed / Cancelled
+### 2. AI Extraction
 
-### Risks
-Detected → Open → Acknowledged → Resolved / Dismissed
+Cloud Function fires → reads source message → calls Gemini → writes one or more documents to `items/` with `status: pendingReview` and `sourceMessageId` set.
 
-### Routines
-Suggested → Accepted → Active → Edited / Disabled
+Also updates source message: `processingStatus: completed`
+
+### 3. Review
+
+User sees items with `status: pendingReview` in Feed (and Review tab). User can:
+- **Approve** → `status: confirmed`
+- **Edit** → update fields, then approve
+- **Delete** → delete the item document, mark source as `dismissed`
+
+### 4. Execution
+
+Confirmed items appear in Feed grouped by date. User can:
+- **Mark done** → `status: completed`
+- **Cancel** → `status: cancelled`
+- **Edit** → update any field
+
+### 5. Recurrence
+
+Recurring items show multiple cards via client-side expansion. Single occurrences can be cancelled/modified via `exceptions` array.
 
 ---
 
-## Confidence & Uncertainty
+## Migration from Current State
 
-Field-level confidence, not just item-level:
+The current app has 9+ subcollections (events/, tasks/, payments/, etc.). Migration:
 
-| Level | Meaning |
-|-------|---------|
-| High | Clearly stated in the source |
-| Medium | Likely but not fully explicit |
-| Low | Inferred or ambiguous |
-| Unknown | Missing |
-
-One item can be partly clear and partly uncertain. Example: date and time are high confidence, but location is low confidence.
-
-**The product should never hide uncertainty.**
+1. Stop writing to separate collections
+2. Cloud Function writes directly to `items/`
+3. Approval = status change on same document (no copy)
+4. Feed queries single `items/` collection
+5. Old collections can be ignored (or migrated later)
 
 ---
 
 ## Data Model Rules
 
-- Do not force every input into an event
-- Do not create reminders without actions
-- Do not create tasks without owners or unassigned status
-- Do not hide uncertainty
-- Do not lose the source message
-- Do not mix facts and suggestions
-- Do not treat changes as normal new events
-- Do not let risks sit silently
-- Do not let household memory override explicit user input
-- Do not over-automate before trust is earned
+- Do NOT create separate collections for each item type
+- Do NOT copy data between collections on approval
+- Do NOT force every input into a specific type — let the AI decide
+- Show uncertainty clearly — `confidence` map and `uncertainFields` array
+- Keep the original source always accessible via `sourceMessageId`
+- Owner is ALWAYS a parent/adult, never a child
+- Child is WHO the item is about, owner is WHO must act on it

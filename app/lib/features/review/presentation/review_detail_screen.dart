@@ -5,25 +5,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
-import '../data/models/extracted_item_model.dart';
-import '../data/repositories/review_repository.dart';
-import '../data/services/approval_service.dart';
-import '../../household/data/models/family_member_model.dart';
-import '../../household/data/repositories/household_repository.dart';
+import '../../items/data/models/item_model.dart';
+import '../../items/data/repositories/item_repository.dart';
+import '../../today/presentation/edit_item_screen.dart';
 
 /// Shows the review detail for a source message.
 /// If AI is still processing → shows loader.
-/// If AI is done → shows extracted items with approve/delete actions.
+/// If AI is done → shows extracted items (from items/ collection) with approve/edit/delete actions.
 class ReviewDetailScreen extends ConsumerWidget {
   final String householdId;
   final String sourceMessageId;
 
-  const ReviewDetailScreen({super.key, required this.householdId, required this.sourceMessageId});
+  const ReviewDetailScreen({
+    super.key,
+    required this.householdId,
+    required this.sourceMessageId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final db = FirebaseFirestore.instance;
-    final sourceRef = db.collection('households').doc(householdId).collection('sourceMessages').doc(sourceMessageId);
+    final sourceRef = db
+        .collection('households')
+        .doc(householdId)
+        .collection('sourceMessages')
+        .doc(sourceMessageId);
 
     return Scaffold(
       appBar: AppBar(
@@ -31,7 +37,8 @@ class ReviewDetailScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => _dismissSource(context, sourceRef),
-            child: Text('Delete', style: TextStyle(color: AppColors.softCoral)),
+            child:
+                Text('Delete', style: TextStyle(color: AppColors.softCoral)),
           ),
         ],
       ),
@@ -58,9 +65,11 @@ class ReviewDetailScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Original message', style: Theme.of(context).textTheme.labelMedium),
+                      Text('Original message',
+                          style: Theme.of(context).textTheme.labelMedium),
                       const SizedBox(height: 8),
-                      Text(content, style: Theme.of(context).textTheme.bodyMedium),
+                      Text(content,
+                          style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ),
                 ),
@@ -68,17 +77,16 @@ class ReviewDetailScreen extends ConsumerWidget {
 
                 // Processing state
                 if (status == 'pending' || status == 'processing') ...[
-                  _ProcessingState(),
+                  const _ProcessingState(),
                 ] else if (status == 'failed') ...[
                   _FailedState(sourceRef: sourceRef),
                 ] else if (status == 'noActionFound') ...[
-                  _NoActionState(),
+                  const _NoActionState(),
                 ] else ...[
-                  // AI done — show extracted items
+                  // AI done — show items from items/ collection
                   _ExtractedItemsList(
                     householdId: householdId,
                     sourceMessageId: sourceMessageId,
-                    ref: ref,
                   ),
                 ],
               ],
@@ -89,13 +97,16 @@ class ReviewDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _dismissSource(BuildContext context, DocumentReference sourceRef) async {
+  Future<void> _dismissSource(
+      BuildContext context, DocumentReference sourceRef) async {
     await sourceRef.update({'processingStatus': 'dismissed'});
     if (context.mounted) Navigator.pop(context);
   }
 }
 
 class _ProcessingState extends StatelessWidget {
+  const _ProcessingState();
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -103,9 +114,14 @@ class _ProcessingState extends StatelessWidget {
         const SizedBox(height: 40),
         const CircularProgressIndicator(),
         const SizedBox(height: 16),
-        Text('Nabbo is reading this...', style: Theme.of(context).textTheme.titleSmall),
+        Text('Nabbo is reading this...',
+            style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        Text('Extracting actions, deadlines, and details.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+        Text('Extracting actions, deadlines, and details.',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.textSecondary)),
       ],
     );
   }
@@ -122,9 +138,14 @@ class _FailedState extends StatelessWidget {
         const SizedBox(height: 20),
         Icon(Icons.error_outline_rounded, size: 48, color: AppColors.softCoral),
         const SizedBox(height: 12),
-        Text('Could not process this', style: Theme.of(context).textTheme.titleSmall),
+        Text('Could not process this',
+            style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        Text('Try again or add details manually.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+        Text('Try again or add details manually.',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.textSecondary)),
         const SizedBox(height: 16),
         OutlinedButton(
           onPressed: () async {
@@ -138,6 +159,8 @@ class _FailedState extends StatelessWidget {
 }
 
 class _NoActionState extends StatelessWidget {
+  const _NoActionState();
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -145,104 +168,111 @@ class _NoActionState extends StatelessWidget {
         const SizedBox(height: 20),
         Icon(Icons.info_outline_rounded, size: 48, color: AppColors.textMuted),
         const SizedBox(height: 12),
-        Text('No clear action found', style: Theme.of(context).textTheme.titleSmall),
+        Text('No clear action found',
+            style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        Text('Nabbo couldn\'t find events, tasks, or deadlines in this message.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary), textAlign: TextAlign.center),
+        Text(
+            'Nabbo couldn\'t find events, tasks, or deadlines in this message.',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.textSecondary),
+            textAlign: TextAlign.center),
       ],
     );
   }
 }
 
-class _ExtractedItemsList extends StatelessWidget {
+/// Shows items linked to this source message from the items/ collection.
+class _ExtractedItemsList extends ConsumerWidget {
   final String householdId;
   final String sourceMessageId;
-  final WidgetRef ref;
 
-  const _ExtractedItemsList({required this.householdId, required this.sourceMessageId, required this.ref});
+  const _ExtractedItemsList({
+    required this.householdId,
+    required this.sourceMessageId,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final db = FirebaseFirestore.instance;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.read(itemRepositoryProvider);
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: db.collection('households').doc(householdId)
-          .collection('extractedItems')
-          .where('sourceMessageId', isEqualTo: sourceMessageId)
-          .snapshots(),
+    return StreamBuilder<List<ItemModel>>(
+      stream: repo.watchItemsBySource(householdId, sourceMessageId),
       builder: (context, snapshot) {
-        final docs = snapshot.data?.docs ?? [];
+        final items = snapshot.data ?? [];
 
-        if (docs.isEmpty) {
+        if (items.isEmpty) {
           return Column(
             children: [
               const SizedBox(height: 20),
-              Icon(Icons.hourglass_empty_rounded, size: 48, color: AppColors.textMuted),
+              Icon(Icons.hourglass_empty_rounded,
+                  size: 48, color: AppColors.textMuted),
               const SizedBox(height: 12),
-              Text('No items extracted yet', style: Theme.of(context).textTheme.titleSmall),
+              Text('No items extracted yet',
+                  style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 8),
-              Text('AI might still be processing. Wait a moment and check again.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary), textAlign: TextAlign.center),
+              Text(
+                  'AI might still be processing. Wait a moment and check again.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                  textAlign: TextAlign.center),
             ],
           );
         }
 
-        final pendingDocs = docs.where((d) {
-          final data = d.data() as Map<String, dynamic>;
-          return data['reviewStatus'] == 'pendingReview';
-        }).toList();
-
-        final approvedDocs = docs.where((d) {
-          final data = d.data() as Map<String, dynamic>;
-          return data['reviewStatus'] != 'pendingReview';
-        }).toList();
+        final pendingItems =
+            items.where((i) => i.status == ItemStatus.pendingReview).toList();
+        final reviewedItems =
+            items.where((i) => i.status != ItemStatus.pendingReview).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (pendingDocs.isNotEmpty) ...[
-              Text('${pendingDocs.length} item${pendingDocs.length > 1 ? 's' : ''} to review', style: Theme.of(context).textTheme.titleSmall),
+            if (pendingItems.isNotEmpty) ...[
+              Text(
+                  '${pendingItems.length} item${pendingItems.length > 1 ? 's' : ''} to review',
+                  style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: AppSpacing.lg),
-              ...pendingDocs.map((doc) {
-                ExtractedItemModel? item;
-                try {
-                  item = ExtractedItemModel.fromFirestore(doc);
-                } catch (_) {
-                  return const SizedBox.shrink();
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                  child: _ExtractedItemCard(
-                    item: item,
-                    householdId: householdId,
-                    ref: ref,
-                  ),
-                );
-              }),
+              ...pendingItems.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: _ItemReviewCard(
+                        item: item, householdId: householdId),
+                  )),
             ],
-            if (approvedDocs.isNotEmpty) ...[
+            if (reviewedItems.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.lg),
-              Text('${approvedDocs.length} already reviewed', style: Theme.of(context).textTheme.labelMedium),
+              Text('${reviewedItems.length} already reviewed',
+                  style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: AppSpacing.sm),
-              ...approvedDocs.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(children: [
-                    Icon(Icons.check_circle_rounded, size: 16, color: AppColors.softGreen),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(
-                      data['operationalSummary'] ?? 'Item',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                    )),
-                  ]),
-                );
-              }),
+              ...reviewedItems.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(children: [
+                      Icon(Icons.check_circle_rounded,
+                          size: 16, color: AppColors.softGreen),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: Text(
+                        item.title,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: AppColors.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )),
+                    ]),
+                  )),
             ],
-            if (pendingDocs.isEmpty && approvedDocs.isNotEmpty) ...[
+            if (pendingItems.isEmpty && reviewedItems.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xl),
-              Icon(Icons.check_circle_rounded, size: 40, color: AppColors.softGreen),
+              Icon(Icons.check_circle_rounded,
+                  size: 40, color: AppColors.softGreen),
               const SizedBox(height: 8),
-              Text('All items reviewed!', style: Theme.of(context).textTheme.titleSmall),
+              Text('All items reviewed!',
+                  style: Theme.of(context).textTheme.titleSmall),
             ],
           ],
         );
@@ -251,45 +281,124 @@ class _ExtractedItemsList extends StatelessWidget {
   }
 }
 
-class _ExtractedItemCard extends StatelessWidget {
-  final ExtractedItemModel item;
+/// Card for a single pending item in review detail
+class _ItemReviewCard extends ConsumerWidget {
+  final ItemModel item;
   final String householdId;
-  final WidgetRef ref;
 
-  const _ExtractedItemCard({required this.item, required this.householdId, required this.ref});
+  const _ItemReviewCard({required this.item, required this.householdId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isUpdate = item.action == ItemAction.update;
+    final isCancel = item.action == ItemAction.cancel;
+    final isChange = isUpdate || isCancel;
+
     return SoftCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
+      color: isCancel ? AppColors.coralLight : (isUpdate ? AppColors.blueLight : null),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Type + member
+          // Type + action + child
           Row(
             children: [
-              CategoryChip(label: item.itemType.name, color: AppColors.primary),
-              if (item.affectedMemberName != null) ...[
+              _TypeChip(type: item.type),
+              if (isChange) ...[
                 const SizedBox(width: 6),
-                CategoryChip(label: item.affectedMemberName!, color: AppColors.primary),
+                _ActionChip(action: item.action),
+              ],
+              if (item.childName != null) ...[
+                const SizedBox(width: 6),
+                CategoryChip(label: item.childName!, color: AppColors.primary),
               ],
             ],
           ),
           const SizedBox(height: AppSpacing.md),
 
-          // Summary
-          Text(item.operationalSummary, style: Theme.of(context).textTheme.bodyMedium),
+          // Title
+          Text(item.title,
+              style: Theme.of(context).textTheme.titleSmall),
+          if (item.summary != null) ...[
+            const SizedBox(height: 4),
+            Text(item.summary!,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.textSecondary)),
+          ],
           const SizedBox(height: AppSpacing.sm),
 
-          // Fields
-          if (item.extractedFields.isNotEmpty) ...[
-            ...item.extractedFields.take(4).map((f) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(children: [
-                    Text('${f.name}: ', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-                    Text(f.value ?? '—', style: Theme.of(context).textTheme.bodySmall),
-                  ]),
-                )),
+          // For updates: show what changed
+          if (isUpdate && item.changes.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            ...item.changes.entries.map((e) {
+              final oldVal = item.previousValues[e.key];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.arrow_forward_rounded, size: 12, color: AppColors.softBlue),
+                    const SizedBox(width: 4),
+                    Text('${_formatKey(e.key)}: ',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                    if (oldVal != null) ...[
+                      Text('$oldVal',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              decoration: TextDecoration.lineThrough, color: AppColors.textMuted)),
+                      Text(' → ', style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                    Flexible(
+                      child: Text('${e.value}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+
+          // For cancellations: show what's being cancelled
+          if (isCancel) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Icon(Icons.cancel_rounded, size: 14, color: AppColors.softCoral),
+                const SizedBox(width: 4),
+                Text('This will cancel the existing item',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.softCoral)),
+              ],
+            ),
+          ],
+
+          // Key fields (for create)
+          if (!isChange) ...[
+            if (item.date != null)
+              _miniField(context, 'Date',
+                  '${item.date!.day}/${item.date!.month}/${item.date!.year} at ${item.date!.hour.toString().padLeft(2, '0')}:${item.date!.minute.toString().padLeft(2, '0')}'),
+            if (item.location != null)
+              _miniField(context, 'Location', item.location!),
+            if (item.ownerName != null)
+              _miniField(context, 'Owner', item.ownerName!),
+          ],
+
+          // Uncertain fields
+          if (item.uncertainFields.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    size: 14, color: AppColors.warmYellow),
+                const SizedBox(width: 4),
+                Text(
+                  '${item.uncertainFields.length} field${item.uncertainFields.length == 1 ? '' : 's'} to check',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.warmYellow,
+                      fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           ],
 
           const SizedBox(height: AppSpacing.lg),
@@ -299,14 +408,25 @@ class _ExtractedItemCard extends StatelessWidget {
             children: [
               Expanded(
                 child: FilledButton(
-                  onPressed: () => _approve(context),
-                  child: const Text('Approve'),
+                  onPressed: () => _approve(context, ref),
+                  style: isCancel
+                      ? FilledButton.styleFrom(backgroundColor: AppColors.softCoral)
+                      : null,
+                  child: Text(isCancel ? 'Confirm cancel' : (isUpdate ? 'Apply change' : 'Approve')),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 8),
+              if (!isChange)
+                OutlinedButton(
+                  onPressed: () => _edit(context),
+                  child: const Text('Edit'),
+                ),
+              if (!isChange) const SizedBox(width: 8),
               OutlinedButton(
-                onPressed: () => _dismiss(context),
-                child: const Text('Delete'),
+                onPressed: () => _delete(context, ref),
+                style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.softCoral),
+                child: Text(isChange ? 'Reject' : 'Delete'),
               ),
             ],
           ),
@@ -315,26 +435,127 @@ class _ExtractedItemCard extends StatelessWidget {
     );
   }
 
-  Future<void> _approve(BuildContext context) async {
-    final service = ref.read(approvalServiceProvider);
-    await service.approveAndCommit(householdId, item);
+  Widget _miniField(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text('$label: ',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColors.textSecondary)),
+          Text(value, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
 
-    // Also mark source as done if all items reviewed
+  String _formatKey(String key) {
+    return key
+        .replaceAllMapped(RegExp(r'([A-Z])'), (m) => ' ${m.group(0)!.toLowerCase()}')
+        .trim();
+  }
+
+  Future<void> _approve(BuildContext context, WidgetRef ref) async {
+    final repo = ref.read(itemRepositoryProvider);
+
+    if (item.action == ItemAction.update && item.targetItemId != null) {
+      // Apply changes to target item
+      final updates = <String, dynamic>{};
+      for (final entry in item.changes.entries) {
+        updates[entry.key] = entry.value;
+      }
+      // Also parse date if it's in changes
+      if (item.date != null && item.changes.containsKey('date')) {
+        updates['date'] = item.date; // Already a Timestamp from Firestore
+      }
+      await repo.approveUpdate(householdId, item.id, item.targetItemId!, updates);
+    } else if (item.action == ItemAction.cancel && item.targetItemId != null) {
+      // Cancel the target item
+      final isRecurring = item.recurrence != null;
+      final cancelDate = item.date != null
+          ? '${item.date!.year}-${item.date!.month.toString().padLeft(2, '0')}-${item.date!.day.toString().padLeft(2, '0')}'
+          : null;
+      await repo.approveCancel(householdId, item.id, item.targetItemId!,
+          cancelDate: cancelDate, isRecurring: isRecurring);
+    } else {
+      // Normal create approval
+      await repo.approve(householdId, item.id);
+    }
+
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Approved and added to feed.')),
-      );
+      final msg = item.action == ItemAction.cancel
+          ? 'Item cancelled.'
+          : (item.action == ItemAction.update ? 'Change applied.' : 'Approved and added to feed.');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 
-  Future<void> _dismiss(BuildContext context) async {
-    final repo = ref.read(reviewRepositoryProvider);
-    await repo.dismissItem(householdId, item.id, null);
-
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    await ref.read(itemRepositoryProvider).deleteItem(householdId, item.id);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Deleted.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(item.action != ItemAction.create ? 'Change rejected.' : 'Deleted.')));
     }
+  }
+
+  void _edit(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditItemScreen(householdId: householdId, item: item),
+      ),
+    );
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  final ItemAction action;
+  const _ActionChip({required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color, bg) = switch (action) {
+      ItemAction.update => ('Change', AppColors.softBlue, AppColors.blueLight),
+      ItemAction.cancel => ('Cancel', AppColors.softCoral, AppColors.coralLight),
+      ItemAction.create => ('New', AppColors.softGreen, AppColors.greenLight),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Text(label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+}
+
+class _TypeChip extends StatelessWidget {
+  final ItemType type;
+  const _TypeChip({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color, bg) = switch (type) {
+      ItemType.event => ('Event', AppColors.primary, AppColors.lavenderLight),
+      ItemType.task => ('Task', AppColors.warmYellow, AppColors.yellowLight),
+      ItemType.deadline =>
+        ('Deadline', AppColors.softCoral, AppColors.coralLight),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Text(label,
+          style:
+              TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+    );
   }
 }

@@ -1,12 +1,12 @@
 // Re-export all enums from data models for convenient access
 export '../../features/household/data/models/household_model.dart'
     show TimestampConverter;
+export '../../features/items/data/models/item_model.dart'
+    show ItemType, ItemStatus, ItemAction;
 export '../../features/household/data/models/family_member_model.dart'
     show MemberRole, AgeGroup;
 export '../../features/capture/data/models/source_message_model.dart'
     show InputMethod, ProcessingStatus;
-export '../../features/review/data/models/extracted_item_model.dart'
-    show ExtractedItemType, ReviewStatus, ConfidenceLevel;
 export '../../features/household/data/models/event_model.dart'
     show EventStatus;
 export '../../features/household/data/models/task_model.dart'

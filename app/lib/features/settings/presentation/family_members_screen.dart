@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/theme/member_colors.dart';
 import '../../household/data/models/family_member_model.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
@@ -153,26 +154,30 @@ class _MemberCard extends StatelessWidget {
         MemberRole.other => 'Other',
       };
 
-  Color _roleColor(BuildContext context) => switch (member.role) {
-        MemberRole.primaryParent => Theme.of(context).colorScheme.primary,
-        MemberRole.secondaryParent => Theme.of(context).colorScheme.tertiary,
-        MemberRole.child => Theme.of(context).colorScheme.secondary,
-        _ => Theme.of(context).colorScheme.outline,
-      };
-
   @override
   Widget build(BuildContext context) {
+    final memberColor = MemberColors.fromHex(member.color);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: member.photoUrl != null
             ? CircleAvatar(backgroundImage: NetworkImage(member.photoUrl!))
             : CircleAvatar(
-                backgroundColor: _roleColor(context).withValues(alpha: 0.15),
+                backgroundColor: memberColor.withValues(alpha: 0.15),
                 child: Text(member.name[0].toUpperCase(),
-                    style: TextStyle(color: _roleColor(context), fontWeight: FontWeight.bold)),
+                    style: TextStyle(color: memberColor, fontWeight: FontWeight.bold)),
               ),
-        title: Text(member.name),
+        title: Row(
+          children: [
+            Text(member.name),
+            const SizedBox(width: 8),
+            Container(
+              width: 10, height: 10,
+              decoration: BoxDecoration(color: memberColor, shape: BoxShape.circle),
+            ),
+          ],
+        ),
         subtitle: Text(_roleLabel),
         trailing: PopupMenuButton<String>(
           onSelected: (value) {
@@ -225,6 +230,7 @@ class _AddMemberDialogState extends ConsumerState<_AddMemberDialog> {
       await repo.addFamilyMember(FamilyMemberModel(
         id: '', householdId: household.id, name: name, role: _role,
         ageGroup: _role == MemberRole.child ? AgeGroup.child : AgeGroup.adult,
+        color: MemberColors.randomColor(),
       ));
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -289,6 +295,7 @@ class _EditMemberDialog extends ConsumerStatefulWidget {
 class _EditMemberDialogState extends ConsumerState<_EditMemberDialog> {
   late final TextEditingController _nameController;
   late MemberRole _role;
+  late String _selectedColor;
   String? _photoUrl;
   bool _isSaving = false;
   bool _isUploading = false;
@@ -298,6 +305,7 @@ class _EditMemberDialogState extends ConsumerState<_EditMemberDialog> {
     super.initState();
     _nameController = TextEditingController(text: widget.member.name);
     _role = widget.member.role;
+    _selectedColor = widget.member.color ?? MemberColors.randomColor();
     _photoUrl = widget.member.photoUrl;
   }
 
@@ -331,7 +339,7 @@ class _EditMemberDialogState extends ConsumerState<_EditMemberDialog> {
     setState(() => _isSaving = true);
     try {
       final repo = widget.ref.read(householdRepositoryProvider);
-      await repo.updateFamilyMember(widget.member.copyWith(name: name, role: _role, photoUrl: _photoUrl));
+      await repo.updateFamilyMember(widget.member.copyWith(name: name, role: _role, photoUrl: _photoUrl, color: _selectedColor));
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -383,6 +391,40 @@ class _EditMemberDialogState extends ConsumerState<_EditMemberDialog> {
             decoration: const InputDecoration(labelText: 'Role'),
             items: MemberRole.values.map((r) => DropdownMenuItem(value: r, child: Text(_roleName(r)))).toList(),
             onChanged: (v) => setState(() => _role = v!),
+          ),
+          const SizedBox(height: 16),
+          // Color picker
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Color', style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: MemberColors.palette.map((hex) {
+                  final color = MemberColors.fromHex(hex);
+                  final isSelected = hex == _selectedColor;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedColor = hex),
+                    child: Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 2.5)
+                            : null,
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check, size: 16, color: Colors.white)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
           ),
         ],
       ),

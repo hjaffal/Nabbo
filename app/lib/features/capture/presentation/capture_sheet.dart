@@ -48,14 +48,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
         _submitted = true;
         _isSubmitting = false;
       });
-
-      // Auto-close after a short delay
-      await Future.delayed(const Duration(milliseconds: 1200));
-      if (mounted) {
-        try {
-          Navigator.of(context).pop(true);
-        } catch (_) {}
-      }
+      // Sheet will be dismissed by user tapping outside or swiping down
     } catch (e) {
       setState(() => _isSubmitting = false);
       if (mounted) {
