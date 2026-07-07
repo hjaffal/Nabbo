@@ -171,10 +171,22 @@ class _FeedContent extends StatelessWidget {
         .snapshots()
         .map((s) => s.docs.map((d) => _mapSource(d)).toList());
 
-    // 2. Committed events
+    // 2. Committed events (expand recurring)
     final eventsStream = householdRef.collection('events')
         .snapshots()
-        .map((s) => s.docs.map((d) => _mapCommitted(d, 'event', Icons.event_rounded, AppColors.primary, AppColors.lavenderLight)).toList());
+        .map((s) {
+          final items = <_FeedItem>[];
+          for (final doc in s.docs) {
+            final d = doc.data();
+            final recurrence = d['recurrence'] as String?;
+            if (recurrence != null && recurrence.isNotEmpty) {
+              items.addAll(_expandRecurring(doc));
+            } else {
+              items.add(_mapCommitted(doc, 'event', Icons.event_rounded, AppColors.primary, AppColors.lavenderLight));
+            }
+          }
+          return items;
+        });
 
     // 3. Committed tasks
     final tasksStream = householdRef.collection('tasks')
@@ -267,6 +279,60 @@ class _FeedContent extends StatelessWidget {
         'mobileShare' => Icons.share_rounded,
         _ => Icons.inbox_rounded,
       };
+
+  /// Expand a recurring event into multiple feed items (one per week for 4 weeks)
+  List<_FeedItem> _expandRecurring(QueryDocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    final recurrence = d['recurrence'] as String? ?? '';
+    final baseTime = (d['startDateTime'] as Timestamp?)?.toDate();
+    final status = d['status'] ?? 'confirmed';
+
+    // Parse which weekday from recurrence string
+    final lowerRec = recurrence.toLowerCase();
+    final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    int? targetWeekday;
+    for (int i = 0; i < dayNames.length; i++) {
+      if (lowerRec.contains(dayNames[i])) {
+        targetWeekday = i + 1; // 1=Mon, 7=Sun
+        break;
+      }
+    }
+
+    if (targetWeekday == null) {
+      return [_mapCommitted(doc, 'event', Icons.event_rounded, AppColors.primary, AppColors.lavenderLight)];
+    }
+
+    final items = <_FeedItem>[];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final hour = baseTime?.hour ?? 0;
+    final minute = baseTime?.minute ?? 0;
+
+    for (int week = 0; week < 4; week++) {
+      var daysUntil = targetWeekday - today.weekday;
+      if (daysUntil < 0) daysUntil += 7;
+      final occDate = today.add(Duration(days: daysUntil + (week * 7)));
+      final occDateTime = DateTime(occDate.year, occDate.month, occDate.day, hour, minute);
+
+      items.add(_FeedItem(
+        id: '${doc.id}_w$week',
+        title: d['title'] ?? 'Event',
+        subtitle: d['location'] != null ? '📍 ${d['location']}' : null,
+        childName: d['affectedMemberName'],
+        ownerName: d['ownerName'],
+        dateTime: occDateTime,
+        feedStatus: status,
+        type: 'event',
+        icon: Icons.repeat_rounded,
+        iconColor: AppColors.primary,
+        iconBg: AppColors.lavenderLight,
+        docRef: doc.reference,
+        rawData: d,
+      ));
+    }
+
+    return items;
+  }
 
   String _truncate(String s, int max) => s.length > max ? '${s.substring(0, max)}...' : s;
 }
