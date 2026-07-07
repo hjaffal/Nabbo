@@ -10,6 +10,7 @@ import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 import '../../capture/data/models/source_message_model.dart';
 import '../../review/presentation/review_detail_screen.dart';
+import 'feed_item_detail_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
   final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -165,11 +166,19 @@ class _FeedContent extends StatelessWidget {
   }
 
   Stream<List<_FeedItem>> _buildFeedStream(DocumentReference householdRef) {
-    // 1. Source messages that are pending/processing/completed (not yet approved)
+    // 1. Source messages not yet fully approved/dismissed
     final sourcesStream = householdRef.collection('sourceMessages')
-        .where('processingStatus', whereIn: ['pending', 'processing', 'completed'])
+        .orderBy('receivedAt', descending: true)
+        .limit(20)
         .snapshots()
-        .map((s) => s.docs.map((d) => _mapSource(d)).toList());
+        .map((s) => s.docs
+            .where((d) {
+              final status = (d.data())['processingStatus'] as String?;
+              // Only show pending, processing, completed (not approved/dismissed/failed/noActionFound)
+              return status == 'pending' || status == 'processing' || status == 'completed';
+            })
+            .map((d) => _mapSource(d))
+            .toList());
 
     // 2. Committed events (expand recurring)
     final eventsStream = householdRef.collection('events')
@@ -203,14 +212,16 @@ class _FeedContent extends StatelessWidget {
         return tasksStream.asyncExpand((tasks) {
           return paymentsStream.map((payments) {
             final all = [...sources, ...events, ...tasks, ...payments];
-            // Pending first, then by date descending
+            // Sort: pending items first, then chronologically (today → future)
             all.sort((a, b) {
+              // Pending/analyzing always on top
               if (a.isPending && !b.isPending) return -1;
               if (!a.isPending && b.isPending) return 1;
+              // Then by date ascending (today first, then tomorrow, etc.)
               if (a.dateTime == null && b.dateTime == null) return 0;
               if (a.dateTime == null) return 1;
               if (b.dateTime == null) return -1;
-              return b.dateTime!.compareTo(a.dateTime!); // newest first
+              return a.dateTime!.compareTo(b.dateTime!);
             });
             return all;
           });
@@ -223,19 +234,20 @@ class _FeedContent extends StatelessWidget {
     final d = doc.data() as Map<String, dynamic>;
     final received = (d['receivedAt'] as Timestamp?)?.toDate();
     final status = d['processingStatus'] ?? 'pending';
+    final isAnalyzing = status == 'pending' || status == 'processing';
 
     return _FeedItem(
       id: doc.id,
       title: _truncate(d['originalContent'] ?? 'New capture', 80),
       childName: null,
       ownerName: null,
-      subtitle: status == 'completed' ? 'Ready for review' : 'Processing...',
+      subtitle: isAnalyzing ? 'Analyzing...' : 'Needs review',
       dateTime: received,
-      feedStatus: 'pendingReview',
+      feedStatus: isAnalyzing ? 'processing' : 'pendingReview',
       type: 'source',
       icon: _inputIcon(d['inputMethod']),
-      iconColor: AppColors.warmYellow,
-      iconBg: AppColors.yellowLight,
+      iconColor: isAnalyzing ? AppColors.softBlue : AppColors.warmYellow,
+      iconBg: isAnalyzing ? AppColors.blueLight : AppColors.yellowLight,
       sourceMessageId: doc.id,
       rawData: d,
     );
@@ -470,88 +482,29 @@ class _FeedCard extends StatelessWidget {
           ),
         ),
       );
-    } else if (item.rawData != null) {
-      _showDetailSheet(context);
+    } else {
+      // Open full screen detail for committed items
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FeedItemDetailScreen(
+            title: item.title,
+            type: item.type,
+            childName: item.childName,
+            ownerName: item.ownerName,
+            subtitle: item.subtitle,
+            feedStatus: item.feedStatus,
+            icon: item.icon,
+            iconColor: item.iconColor,
+            iconBg: item.iconBg,
+            docRef: item.docRef,
+            rawData: item.rawData,
+          ),
+        ),
+      );
     }
   }
 
-  void _showDetailSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.3,
-        maxChildSize: 0.85,
-        expand: false,
-        builder: (ctx, scroll) => SingleChildScrollView(
-          controller: scroll,
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
-              const SizedBox(height: AppSpacing.xl),
-              Row(children: [
-                CategoryChip(label: item.type, color: item.iconColor),
-                if (item.childName != null) ...[const SizedBox(width: 8), CategoryChip(label: item.childName!, color: AppColors.primary)],
-              ]),
-              const SizedBox(height: AppSpacing.lg),
-              Text(item.title, style: Theme.of(ctx).textTheme.titleLarge),
-              if (item.subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(item.subtitle!, style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-              if (item.rawData != null)
-                ...item.rawData!.entries
-                    .where((e) => e.value != null && !['householdId', 'sourceExtractedItemId', 'sourceMessageId'].contains(e.key))
-                    .map((e) {
-                  String val;
-                  if (e.value is Timestamp) {
-                    final dt = (e.value as Timestamp).toDate();
-                    val = '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-                  } else {
-                    val = e.value.toString();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      SizedBox(width: 120, child: Text(e.key, style: Theme.of(ctx).textTheme.bodySmall)),
-                      Expanded(child: Text(val, style: Theme.of(ctx).textTheme.bodyMedium)),
-                    ]),
-                  );
-                }),
-              const SizedBox(height: AppSpacing.xl),
-              if (item.docRef != null && item.feedStatus == 'confirmed')
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () async {
-                      final update = switch (item.type) {
-                        'task' => {'status': 'completed'},
-                        'payment' => {'status': 'paid'},
-                        _ => <String, dynamic>{},
-                      };
-                      if (update.isNotEmpty) await item.docRef!.update(update);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    },
-                    child: Text(switch (item.type) {
-                      'task' => 'Mark done',
-                      'payment' => 'Mark paid',
-                      _ => 'Done',
-                    }),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // --- Status Badge ---
