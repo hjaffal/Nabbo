@@ -54,7 +54,7 @@ Each phase builds on the previous. The goal is to reach a testable core loop (ca
 Each model uses Freezed + JSON serialization + Firestore converters.
 
 - [x] **Household** — id, name, primaryUserId, members[], timezone, defaultLanguage, notificationPreferences, emailAlias, status, createdAt, updatedAt
-- [] **FamilyMember** — id, householdId, name, role (enum), photo, ageGroup, relationship, contactMethod, permissions, defaultResponsibilities[], linkedRoutines[], color, status
+- [x] **FamilyMember** — id, householdId, name, role (enum), photo, ageGroup, relationship, contactMethod, permissions, defaultResponsibilities[], linkedRoutines[], color, status
 - [x] **SourceMessage** — id, householdId, submittedBy, inputMethod (enum), originalContent, attachmentUrls[], attachmentType, sourceApp, receivedAt, processedAt, processingStatus (enum), extractedText, confidenceSummary, linkedExtractedItems[], privacyStatus
 - [x] **ExtractedItem** — id, householdId, sourceMessageId, affectedMemberId, itemType (enum), extractedSummary, detectedFields (map), confidenceLevel (enum), uncertainFields[], suggestedNextStep, reviewStatus (enum), createdAt
 - [x] **DecisionStatus** — id, extractedItemId, status (enum), decidedBy, decidedAt, editedFields[], dismissalReason, snoozeUntil, notes

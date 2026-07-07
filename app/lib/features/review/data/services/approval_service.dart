@@ -49,18 +49,31 @@ class ApprovalService {
     }
 
     // 2. Create the committed object in the appropriate collection
-    final committedData = _buildCommittedObject(item, ownerId, ownerName);
     final collection = _getCollectionName(item.itemType);
 
-    if (collection != null && committedData != null) {
+    if (collection != null) {
       final committedRef = _firestore
           .collection('households')
           .doc(householdId)
           .collection(collection)
           .doc();
 
+      // Build committed data from ALL extracted fields
+      final fieldData = <String, dynamic>{};
+      for (final f in item.extractedFields) {
+        final key = f.name.replaceAll(' ', '_').toLowerCase();
+        fieldData[key] = f.value;
+      }
+
+      // Also store with standard field names for queries
+      final title = fieldData['title'] ?? fieldData['event'] ?? fieldData['task'] ??
+          fieldData['payment'] ?? fieldData['form'] ?? fieldData['item'] ??
+          item.operationalSummary;
+
       batch.set(committedRef, {
-        ...committedData,
+        // Standard fields for querying
+        'title': title,
+        'operationalSummary': item.operationalSummary,
         'sourceExtractedItemId': item.id,
         'sourceMessageId': item.sourceMessageId,
         'affectedMemberId': item.affectedMemberId,
@@ -70,6 +83,23 @@ class ApprovalService {
         'householdId': householdId,
         'createdAt': Timestamp.now(),
         'status': 'confirmed',
+        'itemType': item.itemType.name,
+        // Date fields (try to parse)
+        'startDateTime': _parseDateTime(
+            fieldData['date']?.toString() ?? fieldData['start_date']?.toString(),
+            fieldData['time']?.toString() ?? fieldData['start_time']?.toString()),
+        // All extracted fields preserved
+        'extractedFields': fieldData,
+        // Key fields surfaced at top level for display
+        'location': fieldData['location'] ?? fieldData['venue'] ?? fieldData['place'],
+        'amount': double.tryParse(fieldData['amount']?.toString() ?? ''),
+        'currency': fieldData['currency'] ?? 'EUR',
+        'recurrence': fieldData['recurrence'] ?? fieldData['frequency'] ?? fieldData['repeat'],
+        'requiredItems': fieldData['required_items'] ?? fieldData['items'] ?? fieldData['bring'],
+        'dueDate': _parseDateTime(
+            fieldData['due_date']?.toString() ?? fieldData['deadline']?.toString(), null),
+        'paymentMethod': fieldData['payment_method'] ?? fieldData['method'],
+        'description': fieldData['description'] ?? fieldData['details'] ?? fieldData['notes'],
       });
     }
 
