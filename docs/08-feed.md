@@ -121,7 +121,7 @@ Each date group has a pill-shaped header:
 Recurring items are expanded **client-side** into virtual cards:
 
 1. Read `recurrence` field: `{ frequency, dayOfWeek, startDate, endDate }`
-2. Generate occurrence dates from `startDate` to min(`endDate`, now + 4 weeks)
+2. Generate occurrence dates: if `endDate` exists, expand until that date (max 52 weeks). If no `endDate`, show next 4 weeks.
 3. Check `exceptions` array:
    - If `{ date, status: "cancelled" }` → skip that date
    - If `{ date, overrides: {...} }` → apply overrides to that card

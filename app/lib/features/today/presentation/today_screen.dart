@@ -24,6 +24,13 @@ final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
   return ref.read(householdRepositoryProvider).getHouseholdByUserId(userId);
 });
 
+/// Holds color and photo info for a family member
+class _MemberInfo {
+  final String? color;
+  final String? photoUrl;
+  const _MemberInfo({this.color, this.photoUrl});
+}
+
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
 
@@ -62,6 +69,7 @@ class FeedEntry {
   final ItemModel? item;
   final bool isSource;
   final bool isRecurring;
+  final DateTime? occurrenceDate; // specific date for recurring occurrences
 
   FeedEntry({
     required this.id,
@@ -79,6 +87,7 @@ class FeedEntry {
     this.item,
     this.isSource = false,
     this.isRecurring = false,
+    this.occurrenceDate,
   });
 
   bool get isPending =>
@@ -101,22 +110,23 @@ class _FeedContent extends StatelessWidget {
     final db = FirebaseFirestore.instance;
     final householdRef = db.collection('households').doc(householdId);
 
-    // Load member colors map (name → color hex)
-    return StreamBuilder<Map<String, String>>(
+    // Load member info map (name → { color, photoUrl })
+    return StreamBuilder<Map<String, _MemberInfo>>(
       stream: householdRef.collection('members').snapshots().map((snap) {
-        final map = <String, String>{};
+        final map = <String, _MemberInfo>{};
         for (final doc in snap.docs) {
           final data = doc.data();
           final name = data['name'] as String?;
           final color = data['color'] as String?;
-          if (name != null && color != null) {
-            map[name.toLowerCase()] = color;
+          final photoUrl = data['photoUrl'] as String?;
+          if (name != null) {
+            map[name.toLowerCase()] = _MemberInfo(color: color, photoUrl: photoUrl);
           }
         }
         return map;
       }),
       builder: (context, membersSnap) {
-        final memberColors = membersSnap.data ?? {};
+        final memberInfo = membersSnap.data ?? {};
 
         return StreamBuilder<List<FeedEntry>>(
           stream: _buildFeedStream(householdRef),
@@ -192,7 +202,7 @@ class _FeedContent extends StatelessWidget {
                           Padding(
                             padding:
                                 const EdgeInsets.only(bottom: AppSpacing.md),
-                            child: _buildSwipeable(context, entry, householdId, memberColors),
+                            child: _buildSwipeable(context, entry, householdId, memberInfo),
                           ),
                         ],
                       );
@@ -218,14 +228,14 @@ class _FeedContent extends StatelessWidget {
     return 'Good evening';
   }
 
-  Widget _buildSwipeable(BuildContext context, FeedEntry entry, String householdId, Map<String, String> memberColors) {
+  Widget _buildSwipeable(BuildContext context, FeedEntry entry, String householdId, Map<String, _MemberInfo> memberInfo) {
     // Allow swipe on confirmed and cancelled items (not pending, not source)
     final canSwipe = !entry.isSource &&
         !entry.isPending &&
         entry.item != null;
 
     if (!canSwipe) {
-      return _FeedCard(entry: entry, householdId: householdId, memberColors: memberColors);
+      return _FeedCard(entry: entry, householdId: householdId, memberInfo: memberInfo);
     }
 
     return Dismissible(
@@ -274,7 +284,7 @@ class _FeedContent extends StatelessWidget {
           ),
         );
       },
-      child: _FeedCard(entry: entry, householdId: householdId, memberColors: memberColors),
+      child: _FeedCard(entry: entry, householdId: householdId, memberInfo: memberInfo),
     );
   }
 
@@ -491,7 +501,12 @@ class _FeedContent extends StatelessWidget {
       }
     }
 
-    for (int week = 0; week < 4; week++) {
+    // Determine how many weeks to expand
+    // If end date exists: expand until end date (max 52 weeks to prevent infinite)
+    // If no end date: show next 4 weeks
+    final maxWeeks = endDate != null ? 52 : 4;
+
+    for (int week = 0; week < maxWeeks; week++) {
       var daysUntil = targetWeekday - today.weekday;
       if (daysUntil < 0) daysUntil += 7;
       final occDate = today.add(Duration(days: daysUntil + (week * 7)));
@@ -521,6 +536,7 @@ class _FeedContent extends StatelessWidget {
         iconBg: typeInfo.$3,
         item: item,
         isRecurring: true,
+        occurrenceDate: occDate,
       ));
     }
 
@@ -605,8 +621,8 @@ class _DateHeader extends StatelessWidget {
 class _FeedCard extends StatelessWidget {
   final FeedEntry entry;
   final String householdId;
-  final Map<String, String> memberColors;
-  const _FeedCard({required this.entry, required this.householdId, required this.memberColors});
+  final Map<String, _MemberInfo> memberInfo;
+  const _FeedCard({required this.entry, required this.householdId, required this.memberInfo});
 
   @override
   Widget build(BuildContext context) {
@@ -710,7 +726,8 @@ class _FeedCard extends StatelessWidget {
                         if (entry.childName != null) ...[
                           _ChildChip(
                             name: entry.childName!,
-                            colorHex: memberColors[entry.childName!.toLowerCase()],
+                            colorHex: memberInfo[entry.childName!.toLowerCase()]?.color,
+                            photoUrl: memberInfo[entry.childName!.toLowerCase()]?.photoUrl,
                           ),
                           const SizedBox(width: 6),
                         ],
@@ -779,6 +796,7 @@ class _FeedCard extends StatelessWidget {
             builder: (_) => ItemDetailScreen(
               householdId: householdId,
               item: entry.item!,
+              occurrenceDate: entry.occurrenceDate,
             ),
           ),
         );
@@ -787,11 +805,12 @@ class _FeedCard extends StatelessWidget {
   }
 }
 
-/// Child chip with initial avatar using member's assigned color
+/// Child chip with photo or colored initial avatar
 class _ChildChip extends StatelessWidget {
   final String name;
   final String? colorHex;
-  const _ChildChip({required this.name, this.colorHex});
+  final String? photoUrl;
+  const _ChildChip({required this.name, this.colorHex, this.photoUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -807,15 +826,21 @@ class _ChildChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
-            radius: 10,
-            backgroundColor: color,
-            child: Text(initial,
-                style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white)),
-          ),
+          if (photoUrl != null && photoUrl!.isNotEmpty)
+            CircleAvatar(
+              radius: 10,
+              backgroundImage: NetworkImage(photoUrl!),
+            )
+          else
+            CircleAvatar(
+              radius: 10,
+              backgroundColor: color,
+              child: Text(initial,
+                  style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white)),
+            ),
           const SizedBox(width: 4),
           Text(name,
               style: TextStyle(

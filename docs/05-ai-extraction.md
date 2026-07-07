@@ -58,7 +58,9 @@ Each input is stored as a `sourceMessage` and preserved for traceability.
    b. Confirmed items (for change detection + dedup)
    c. Today's date (for relative date resolution)
 5. Build extraction prompt (includes existing items so AI can detect changes)
-6. Call Gemini 2.5 Flash
+6. Call Gemini 2.5 Flash:
+   - Text inputs: send prompt as text content
+   - Image inputs: download image from Storage URL, send as base64 inlineData alongside prompt (multimodal)
 7. Parse JSON response (strip markdown fences)
 8. For each extracted result:
    a. If action == "create": write new item with status 'pendingReview'

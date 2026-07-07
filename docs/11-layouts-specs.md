@@ -33,9 +33,11 @@ The card that represents a single item in the Feed. Used for all statuses and ty
 
 ### Child Chip Color
 
-The child chip uses the family member's assigned `color` field:
-- Background: member color at 15% opacity
-- Text + initial avatar: member color at full opacity
+The child chip uses the family member's assigned `color` field and photo:
+- If the member has a `photoUrl` → show circular photo avatar (10px radius)
+- If no photo → show colored initial circle (background: member color, text: white initial)
+- Chip background: member color at 15% opacity
+- Name text: member color at full opacity
 - If no color set: falls back to primary purple
 
 ### Visual States

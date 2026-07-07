@@ -12,11 +12,13 @@ import 'edit_item_screen.dart';
 class ItemDetailScreen extends ConsumerWidget {
   final String householdId;
   final ItemModel item;
+  final DateTime? occurrenceDate; // non-null if viewing a specific recurring occurrence
 
   const ItemDetailScreen({
     super.key,
     required this.householdId,
     required this.item,
+    this.occurrenceDate,
   });
 
   @override
@@ -145,12 +147,26 @@ class ItemDetailScreen extends ConsumerWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () => _cancel(context, ref),
+                  onPressed: () => _handleCancel(context, ref),
                   style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.softCoral),
-                  child: const Text('Cancel'),
+                  child: Text(item.recurrence != null && occurrenceDate != null
+                      ? 'Cancel this occurrence'
+                      : 'Cancel'),
                 ),
               ),
+              if (item.recurrence != null && occurrenceDate != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => _cancelAll(context, ref),
+                    style: TextButton.styleFrom(
+                        foregroundColor: AppColors.softCoral),
+                    child: const Text('Cancel entire series'),
+                  ),
+                ),
+              ],
             ] else if (item.status == ItemStatus.pendingReview) ...[
               SizedBox(
                 width: double.infinity,
@@ -277,9 +293,31 @@ class ItemDetailScreen extends ConsumerWidget {
     if (context.mounted) Navigator.pop(context);
   }
 
-  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleCancel(BuildContext context, WidgetRef ref) async {
+    if (item.recurrence != null && occurrenceDate != null) {
+      // Cancel single occurrence via exceptions array
+      final dateStr =
+          '${occurrenceDate!.year}-${occurrenceDate!.month.toString().padLeft(2, '0')}-${occurrenceDate!.day.toString().padLeft(2, '0')}';
+      await ref.read(itemRepositoryProvider).cancelOccurrence(householdId, item.id, dateStr);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Occurrence cancelled')));
+        Navigator.pop(context);
+      }
+    } else {
+      // Cancel entire item
+      await ref.read(itemRepositoryProvider).cancel(householdId, item.id);
+      if (context.mounted) Navigator.pop(context);
+    }
+  }
+
+  Future<void> _cancelAll(BuildContext context, WidgetRef ref) async {
     await ref.read(itemRepositoryProvider).cancel(householdId, item.id);
-    if (context.mounted) Navigator.pop(context);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Entire series cancelled')));
+      Navigator.pop(context);
+    }
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {

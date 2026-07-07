@@ -64,10 +64,12 @@
 ### Cloud Functions
 - **`extractSourceMessage`** — Triggered on new sourceMessage creation:
   1. Gathers household context (family members + existing items)
-  2. Calls Gemini 2.5 Flash for extraction
-  3. Writes items directly to `items/` with `status: pendingReview`
-  4. Updates sourceMessage `processingStatus`
-  5. Sends push notification
+  2. Calls Gemini 2.5 Flash for extraction (text-only or multimodal with image)
+  3. For image captures: downloads image, sends as base64 inlineData to Gemini
+  4. Detects changes to existing items (action: create/update/cancel)
+  5. Writes items directly to `items/` with `status: pendingReview`
+  6. Updates sourceMessage `processingStatus`
+  7. Sends push notification
 - **`checkDeadlines`** — Scheduled hourly:
   1. Finds deadlines due within 24 hours
   2. Sends push notification reminders
@@ -78,10 +80,13 @@
 
 ### Gemini 2.5 Flash
 - Core extraction engine (via `@google/genai` SDK)
+- **Multimodal**: handles both text and image inputs
 - API key stored as Firebase Secret (`GEMINI_API_KEY`)
 - Receives: raw text + household context (family members + existing items)
+- For images: receives base64-encoded image data alongside extraction prompt
 - Returns: JSON array of extracted items with type, fields, confidence, uncertainty
-- Prompt includes household context for accurate child matching
+- Prompt includes household context for accurate child matching and change detection
+- Detects updates/cancellations of existing items (action field)
 
 ### Cloud Run
 - Email ingestion service
@@ -195,6 +200,9 @@ userTokens/
 | Voice transcription | On-device `speech_to_text` plugin | No server round-trip, instant feedback |
 | Code generation | Freezed + json_serializable | Type-safe models, Firestore serialization |
 | Routing | GoRouter | Declarative, deep-link ready |
+| Weather | OpenWeatherMap API (free tier) | Simple, reliable, city or GPS-based |
+| Location autocomplete | Google Places API | Accurate address search for household + item locations |
+| Change detection | Gemini context comparison | AI compares new input against existing items |
 
 ---
 

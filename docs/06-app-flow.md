@@ -145,21 +145,26 @@ The Feed is the main screen. It shows **all items** in chronological order, grou
 | Source | Status shown | Badge |
 |--------|-------------|-------|
 | Source Message with `processingStatus: pending/processing` | "Analyzing..." | Blue |
-| Source Message with `processingStatus: completed` (items created) | "Needs review" | Yellow |
+| Source Message with `processingStatus: failed` | "Failed — tap to retry" | Coral |
+| Source Message with `processingStatus: noAction` | "No action found" | Grey |
+| Source Message with `processingStatus: completed` (items created) | Hidden (items shown instead) | — |
 | Item with `status: pendingReview` | "Needs review" | Yellow |
 | Item with `status: confirmed` | "Active" | Green |
-| Item with `status: completed` | "Done" | Green (dimmed) |
 | Item with `status: cancelled` | "Cancelled" | Coral (strikethrough) |
+| Item with `status: completed` | Hidden from Feed | — |
+| Item with `status: hidden` | Hidden from Feed | — |
 
 ### Feed layout
 
-- Greeting: "Good morning" / "Good afternoon" / "Good evening"
+- Greeting: "Good evening, [user name]" (time-based + user's display name)
 - Title: "Your family feed"
+- **Weather widget** (top-right): emoji + temperature from OpenWeatherMap (by household city or GPS fallback)
 - Items grouped by day: "Needs Review", "Today", "Tomorrow", "Wed, 9 Jul", etc.
-- Each card shows: icon, title, child name chip, owner chip, time, status badge
+- Each card shows: icon, title, child chip (photo or colored initial), owner chip, location, time, status badge
 - Tapping a pending item → opens **Review Detail** screen
 - Tapping a confirmed item → opens **Item Detail** screen
-- Recurring items expand into one card per occurrence (next 4 weeks)
+- Recurring items expand into one card per occurrence (until endDate, or next 4 weeks if no end)
+- **Swipe left** on confirmed/cancelled items → hides from Feed (status: hidden, with undo)
 
 ### Feed sorting
 

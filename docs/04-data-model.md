@@ -163,7 +163,7 @@ Or an override:
 ### Feed Expansion Logic
 
 1. Read recurrence rule from item
-2. Generate occurrences from `startDate` to min(`endDate`, now + 4 weeks)
+2. Generate occurrences from `startDate` to min(`endDate`, now + 52 weeks). If no `endDate`, show next 4 weeks only.
 3. For each occurrence date, check `exceptions`:
    - If `status: cancelled` → skip this date
    - If `overrides` exist → apply them to the card

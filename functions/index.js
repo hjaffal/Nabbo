@@ -263,6 +263,7 @@ RULES:
 - Include date AND time when mentioned. "Friday at 18:30" means the date is Friday AND the time is 18:30.
 - If an event has an end time (e.g., "2pm to 5pm"), include endDate.
 - If recurring, include recurrence object with frequency, dayOfWeek, startDate, and endDate if mentioned.
+- For recurrence endDate: "until end of year" = "2026-12-31", "until summer" = "2026-08-31", "until December" = "2026-12-31". Always convert relative end dates to YYYY-MM-DD format.
 - For updates: include a "changes" object with only the fields that changed (e.g., {"date": "thursday 18:00", "location": "Main Hall"}).
 - Mark uncertain fields in uncertainFields array.
 - Do NOT guess dates/times — mark as uncertain if unclear.
