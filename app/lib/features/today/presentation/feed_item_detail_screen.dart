@@ -125,34 +125,63 @@ class FeedItemDetailScreen extends StatelessWidget {
     if (rawData == null) return [];
     final skip = {'householdId', 'sourceExtractedItemId', 'sourceMessageId', 'affectedMemberId', 'ownerId'};
 
-    final fields = rawData!.entries
-        .where((e) => e.value != null && !skip.contains(e.key) && e.value.toString().isNotEmpty && e.value.toString() != 'null')
-        .toList();
+    // Show important fields first, then others
+    final priority = ['title', 'affectedMemberName', 'ownerName', 'startDateTime', 'endDateTime', 'dueDate', 'location', 'amount', 'currency', 'recurrence', 'status'];
+    final shown = <String>{};
 
-    return fields.map((e) {
-      String val;
-      if (e.value is Timestamp) {
-        final dt = (e.value as Timestamp).toDate();
-        val = '${dt.day}/${dt.month}/${dt.year} at ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      } else if (e.value is List) {
-        val = (e.value as List).join(', ');
-      } else {
-        val = e.value.toString();
+    final widgets = <Widget>[];
+
+    // Priority fields first
+    for (final key in priority) {
+      if (rawData!.containsKey(key) && !skip.contains(key)) {
+        shown.add(key);
+        widgets.add(_fieldRow(context, key, rawData![key]));
       }
-      return Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 130,
-              child: Text(_formatKey(e.key), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+    }
+
+    // Then remaining fields
+    for (final entry in rawData!.entries) {
+      if (!skip.contains(entry.key) && !shown.contains(entry.key) && entry.value != null && entry.value.toString() != 'null' && entry.value.toString().isNotEmpty) {
+        widgets.add(_fieldRow(context, entry.key, entry.value));
+      }
+    }
+
+    return widgets;
+  }
+
+  Widget _fieldRow(BuildContext context, String key, dynamic value) {
+    String val;
+    if (value == null || value.toString() == 'null') {
+      val = '— not set';
+    } else if (value is Timestamp) {
+      final dt = value.toDate();
+      val = '${dt.day}/${dt.month}/${dt.year} at ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } else if (value is List) {
+      val = (value).join(', ');
+    } else {
+      val = value.toString();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(_formatKey(key), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+          ),
+          Expanded(
+            child: Text(
+              val,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: val == '— not set' ? AppColors.textMuted : null,
+                  ),
             ),
-            Expanded(child: Text(val, style: Theme.of(context).textTheme.bodyMedium)),
-          ],
-        ),
-      );
-    }).toList();
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatKey(String key) {
@@ -205,11 +234,13 @@ class _EditFeedItemScreenState extends State<_EditFeedItemScreen> {
   late Map<String, TextEditingController> _controllers;
   bool _isSaving = false;
 
-  // Fields we allow editing
+  // Fields we allow editing (includes date/time and assignee)
   static const _editableFields = [
     'title', 'location', 'affectedMemberName', 'ownerName',
+    'startDateTime', 'endDateTime', 'dueDate',
     'amount', 'currency', 'paymentMethod', 'paymentLink',
     'name', 'recurrence', 'description', 'submissionMethod',
+    'status',
   ];
 
   @override
@@ -218,13 +249,14 @@ class _EditFeedItemScreenState extends State<_EditFeedItemScreen> {
     _controllers = {};
     for (final key in _editableFields) {
       final value = widget.rawData[key];
-      if (value != null && value is! Timestamp && value is! List) {
-        _controllers[key] = TextEditingController(text: value.toString());
+      String textVal = '';
+      if (value is Timestamp) {
+        final dt = value.toDate();
+        textVal = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } else if (value != null && value.toString() != 'null') {
+        textVal = value.toString();
       }
-    }
-    // Always show title
-    if (!_controllers.containsKey('title') && widget.rawData.containsKey('name')) {
-      _controllers['title'] = TextEditingController(text: widget.rawData['name']?.toString() ?? '');
+      _controllers[key] = TextEditingController(text: textVal);
     }
   }
 
