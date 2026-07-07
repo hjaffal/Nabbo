@@ -229,10 +229,10 @@ class _FeedContent extends StatelessWidget {
   }
 
   Widget _buildSwipeable(BuildContext context, FeedEntry entry, String householdId, Map<String, _MemberInfo> memberInfo) {
-    // Allow swipe on confirmed items (not pending, not source, not already cancelled/hidden)
+    // Allow swipe on confirmed, completed, and cancelled items (not pending, not source)
     final canSwipe = !entry.isSource &&
         !entry.isPending &&
-        entry.feedStatus == 'confirmed' &&
+        (entry.feedStatus == 'confirmed' || entry.feedStatus == 'completed' || entry.feedStatus == 'cancelled') &&
         entry.item != null;
 
     if (!canSwipe) {
@@ -277,11 +277,19 @@ class _FeedContent extends StatelessWidget {
           );
 
           if (result == 'hide') {
-            _setStatus(householdId, itemId, 'hidden', entry.feedStatus);
+            if (entry.isRecurring && entry.occurrenceDate != null) {
+              // Hide single occurrence via exception
+              final dateStr = '${entry.occurrenceDate!.year}-${entry.occurrenceDate!.month.toString().padLeft(2, '0')}-${entry.occurrenceDate!.day.toString().padLeft(2, '0')}';
+              FirebaseFirestore.instance.collection('households').doc(householdId).collection('items').doc(itemId).update({
+                'exceptions': FieldValue.arrayUnion([{'date': dateStr, 'status': 'hidden'}]),
+                'updatedAt': Timestamp.now(),
+              });
+            } else {
+              _setStatus(householdId, itemId, 'hidden', entry.feedStatus);
+            }
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                 content: Text('${entry.title} hidden'),
-                action: SnackBarAction(label: 'Undo', onPressed: () => _setStatus(householdId, itemId, entry.feedStatus, null)),
               ));
             }
           } else if (result == 'cancel') {
@@ -406,8 +414,8 @@ class _FeedContent extends StatelessWidget {
       for (final doc in snapshot.docs) {
         try {
           final item = ItemModel.fromFirestore(doc);
-          // Hide completed and hidden items from feed (cancelled items stay visible)
-          if (item.status == ItemStatus.completed || item.status == ItemStatus.hidden) continue;
+          // Only hide 'hidden' items from feed
+          if (item.status == ItemStatus.hidden) continue;
           // Expand recurring items
           if (item.recurrence != null && item.status == ItemStatus.confirmed) {
             entries.addAll(_expandRecurring(item));
@@ -571,11 +579,14 @@ class _FeedContent extends StatelessWidget {
       endDate = DateTime.tryParse(rule.endDate!);
     }
 
-    // Build set of cancelled dates from exceptions
+    // Build set of cancelled and hidden dates from exceptions
     final cancelledDates = <String>{};
+    final hiddenDates = <String>{};
     for (final ex in item.exceptions) {
       if (ex.status == 'cancelled') {
         cancelledDates.add(ex.date);
+      } else if (ex.status == 'hidden') {
+        hiddenDates.add(ex.date);
       }
     }
 
@@ -649,6 +660,10 @@ class _FeedContent extends StatelessWidget {
 
       final dateStr =
           '${occDate.year}-${occDate.month.toString().padLeft(2, '0')}-${occDate.day.toString().padLeft(2, '0')}';
+
+      // Skip hidden occurrences
+      if (hiddenDates.contains(dateStr)) continue;
+
       final isCancelledOccurrence = cancelledDates.contains(dateStr);
 
       final typeInfo = _typeVisuals(item.type);
@@ -1063,6 +1078,7 @@ class _WeatherWidget extends StatefulWidget {
 
 class _WeatherWidgetState extends State<_WeatherWidget> {
   WeatherData? _weather;
+  String? _cityName;
   bool _loaded = false;
 
   @override
@@ -1073,30 +1089,12 @@ class _WeatherWidgetState extends State<_WeatherWidget> {
 
   Future<void> _loadWeather() async {
     try {
-      // Get city from household document
-      final doc = await FirebaseFirestore.instance
-          .collection('households')
-          .doc(widget.householdId)
-          .get();
-
-      if (!doc.exists || !mounted) return;
-
-      final data = doc.data()!;
-      final city = data['city'] as String?;
-
       WeatherData? weather;
 
-      if (city != null && city.isNotEmpty) {
-        weather = await WeatherService.fetchByCity(city);
-      } else {
-        // Fallback: use device GPS location
-        try {
-          bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-          if (!serviceEnabled) {
-            if (mounted) setState(() => _loaded = true);
-            return;
-          }
-
+      // Use device GPS for weather (always most accurate)
+      try {
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (serviceEnabled) {
           LocationPermission permission = await Geolocator.checkPermission();
           if (permission == LocationPermission.denied) {
             permission = await Geolocator.requestPermission();
@@ -1109,10 +1107,16 @@ class _WeatherWidgetState extends State<_WeatherWidget> {
             weather = await WeatherService.fetchByCoords(
                 position.latitude, position.longitude);
           }
-        } catch (_) {}
-      }
+        }
+      } catch (_) {}
 
-      if (mounted) setState(() { _weather = weather; _loaded = true; });
+      if (mounted) {
+        setState(() {
+          _weather = weather;
+          _cityName = weather?.cityName;
+          _loaded = true;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loaded = true);
     }
@@ -1122,25 +1126,32 @@ class _WeatherWidgetState extends State<_WeatherWidget> {
   Widget build(BuildContext context) {
     if (!_loaded || _weather == null) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(_weather!.emoji, style: const TextStyle(fontSize: 18)),
-          const SizedBox(width: 4),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_weather!.emoji, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 4),
+            Text(
+              '${_weather!.temperature.round()}°',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+        if (_cityName != null)
           Text(
-            '${_weather!.temperature.round()}°',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+            _cityName!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
                 ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

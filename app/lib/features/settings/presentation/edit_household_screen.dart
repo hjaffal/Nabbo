@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/api_keys.dart';
 import '../../../core/constants/timezones.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/place_autocomplete_field.dart';
@@ -42,7 +43,7 @@ class _EditHouseholdScreenState extends ConsumerState<EditHouseholdScreen> {
     _loadHousehold();
   }
 
-  static const _placesApiKey = String.fromEnvironment('PLACES_API_KEY', defaultValue: 'AIzaSyBDgIsGaaUxH8mSXDbNAw6kN0qdPPTe-es');
+  static const _placesApiKey = ApiKeys.placesApiKey;
 
   @override
   void dispose() {

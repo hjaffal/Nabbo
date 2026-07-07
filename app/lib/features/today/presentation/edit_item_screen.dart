@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/member_colors.dart';
+import '../../../core/config/api_keys.dart';
 import '../../../core/widgets/place_autocomplete_field.dart';
 import '../../household/data/models/family_member_model.dart';
 import '../../household/data/repositories/household_repository.dart';
@@ -45,7 +46,7 @@ class _EditItemScreenState extends ConsumerState<EditItemScreen> {
   List<FamilyMemberModel> _members = [];
 
   // Google Places API key
-  static const _placesApiKey = String.fromEnvironment('PLACES_API_KEY', defaultValue: 'AIzaSyBDgIsGaaUxH8mSXDbNAw6kN0qdPPTe-es');
+  static const _placesApiKey = ApiKeys.placesApiKey;
 
   @override
   void initState() {

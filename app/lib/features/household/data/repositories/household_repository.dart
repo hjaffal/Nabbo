@@ -62,6 +62,9 @@ class HouseholdRepository {
       'timezone': household.timezone,
       'language': household.language,
       'emailAlias': household.emailAlias,
+      'zipCode': household.zipCode,
+      'city': household.city,
+      'country': household.country,
       'memberIds': household.memberIds,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });

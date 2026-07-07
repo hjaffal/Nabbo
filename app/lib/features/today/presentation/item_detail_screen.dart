@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -91,11 +92,14 @@ class ItemDetailScreen extends ConsumerWidget {
                   if (item.endDate != null)
                     _fieldRow(
                         context, 'End date', _formatDateTime(item.endDate)),
-                  _fieldRow(context, 'Location', item.location),
+                  if (item.location != null)
+                    _locationRow(context, item.location!),
                   if (item.recurrence != null) ...[
                     _fieldRow(context, 'Recurrence',
                         _formatRecurrence(item.recurrence!)),
                   ],
+                  if (item.notes != null && item.notes!.isNotEmpty)
+                    _fieldRow(context, 'Notes', item.notes),
                   // Extracted fields
                   ...item.extractedFields.entries.map((e) {
                     if (e.value == null || e.value.toString().isEmpty) {
@@ -236,6 +240,51 @@ class ItemDetailScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Widget _locationRow(BuildContext context, String location) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text('Location',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.textSecondary)),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _openInMaps(location),
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      location,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.primary),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openInMaps(String location) {
+    final encoded = Uri.encodeComponent(location);
+    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
+    launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   String? _formatDateTime(DateTime? dt) {

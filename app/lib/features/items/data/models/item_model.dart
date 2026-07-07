@@ -61,6 +61,7 @@ abstract class ItemModel with _$ItemModel {
     @Default(ItemAction.create) ItemAction action,
     required String title,
     String? summary,
+    String? notes,
     String? childId,
     String? childName,
     String? ownerId,

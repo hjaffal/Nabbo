@@ -1,16 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../config/api_keys.dart';
+
 /// Simple weather data from OpenWeatherMap
 class WeatherData {
   final double temperature; // Celsius
   final String icon; // OpenWeatherMap icon code
   final String description; // e.g. "clear sky"
+  final String? cityName; // city name from API response
 
   WeatherData({
     required this.temperature,
     required this.icon,
     required this.description,
+    this.cityName,
   });
 
   /// Returns a weather emoji based on icon code
@@ -32,7 +36,7 @@ class WeatherData {
 /// Fetches current weather from OpenWeatherMap API
 class WeatherService {
   // OpenWeatherMap free tier API key
-  static const _apiKey = 'dbddbba72c188444e6edcef5f4fa0268';
+  static const _apiKey = ApiKeys.weatherApiKey;
 
   /// Fetch weather by city name
   static Future<WeatherData?> fetchByCity(String city) async {
@@ -93,10 +97,12 @@ class WeatherService {
     try {
       final main = data['main'];
       final weather = (data['weather'] as List).first;
+      final name = data['name'] as String?;
       return WeatherData(
         temperature: (main['temp'] as num).toDouble(),
         icon: weather['icon'] as String,
         description: weather['description'] as String,
+        cityName: name,
       );
     } catch (_) {
       return null;

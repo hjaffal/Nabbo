@@ -74,9 +74,7 @@ class _ImageCaptureSheetState extends ConsumerState<ImageCaptureSheet> {
         _submitted = true;
         _isUploading = false;
       });
-
-      await Future.delayed(const Duration(milliseconds: 1200));
-      if (mounted) Navigator.of(context).pop(true);
+      // Sheet will be dismissed by user tapping outside or swiping down
     } catch (e) {
       setState(() => _isUploading = false);
       if (mounted) {
