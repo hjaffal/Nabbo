@@ -11,6 +11,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/member_colors.dart';
 import '../../../core/theme/category_icons.dart';
 import '../../../core/services/weather_service.dart';
+import '../../../core/l10n/strings.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
@@ -45,7 +46,7 @@ class TodayScreen extends ConsumerWidget {
         data: (household) {
           if (household == null) return const _EmptyState();
           final displayName = FirebaseAuth.instance.currentUser?.displayName ?? household.name;
-          return _FeedContent(householdId: household.id, userName: displayName);
+          return _FeedContent(householdId: household.id, userName: displayName, lang: household.language);
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -105,7 +106,8 @@ class FeedEntry {
 class _FeedContent extends StatelessWidget {
   final String householdId;
   final String userName;
-  const _FeedContent({required this.householdId, required this.userName});
+  final String lang;
+  const _FeedContent({required this.householdId, required this.userName, required this.lang});
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +162,7 @@ class _FeedContent extends StatelessWidget {
                                         .bodyMedium
                                         ?.copyWith(color: AppColors.textSecondary)),
                                 const SizedBox(height: 4),
-                                Text('Your family feed',
+                                Text(AppStrings.get('your_family_feed', lang),
                                     style: Theme.of(context).textTheme.headlineMedium),
                               ],
                             ),
@@ -227,9 +229,9 @@ class _FeedContent extends StatelessWidget {
 
   String _greeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return AppStrings.get('good_morning', lang);
+    if (hour < 17) return AppStrings.get('good_afternoon', lang);
+    return AppStrings.get('good_evening', lang);
   }
 
   Widget _buildSwipeable(BuildContext context, FeedEntry entry, String householdId, Map<String, _MemberInfo> memberInfo) {

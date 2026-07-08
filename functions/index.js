@@ -528,6 +528,33 @@ function convertLocalToUTC(date, timezone) {
  */
 async function writeNotification(householdId, { type, title, body, itemId, sourceMessageId, priority }) {
   try {
+    // Check notification preferences
+    const householdDoc = await db.collection('households').doc(householdId).get();
+    if (!householdDoc.exists) return;
+
+    const prefs = householdDoc.data().notificationPrefs || {};
+    const quietStart = prefs.quietStart || '22:00';
+    const quietEnd = prefs.quietEnd || '07:00';
+
+    // Check quiet hours
+    const now = new Date();
+    const currentHour = now.getHours();
+    const quietStartHour = parseInt(quietStart.split(':')[0]);
+    const quietEndHour = parseInt(quietEnd.split(':')[0]);
+    const inQuietHours = quietStartHour > quietEndHour
+        ? (currentHour >= quietStartHour || currentHour < quietEndHour)
+        : (currentHour >= quietStartHour && currentHour < quietEndHour);
+
+    // Check type-specific preferences
+    const typeEnabled = {
+      'review_needed': prefs.reviewAlerts !== false,
+      'change_detected': prefs.changeAlerts !== false,
+      'deadline': prefs.deadlineToday !== false,
+      'event_reminder': prefs.eventReminders !== false,
+      'daily_brief': prefs.dailyBrief === true, // opt-in
+    };
+
+    if (typeEnabled[type] === false) return; // User disabled this type
     // Write to notifications collection
     const notifRef = db.collection('households').doc(householdId).collection('notifications').doc();
     await notifRef.set({
@@ -542,9 +569,10 @@ async function writeNotification(householdId, { type, title, body, itemId, sourc
       createdAt: Timestamp.now(),
     });
 
-    // Send FCM push (best-effort)
+    // Send FCM push (best-effort, skip during quiet hours)
+    if (inQuietHours) return;
+
     try {
-      const householdDoc = await db.collection('households').doc(householdId).get();
       if (!householdDoc.exists) return;
 
       const userId = householdDoc.data().primaryUserId;
@@ -710,6 +738,74 @@ exports.checkUpcomingEvents = onSchedule(
           priority: minsLeft <= 60 ? 'high' : 'medium',
         });
       }
+    }
+  }
+);
+
+/**
+ * Scheduled: daily brief notification (every day at 7:30 AM UTC — adjust for timezone).
+ * Sends a morning summary: "Today: X events, Y deadlines"
+ */
+exports.dailyBrief = onSchedule(
+  { schedule: 'every day 07:30', region: LOCATION },
+  async () => {
+    const households = await db.collection('households').get();
+
+    for (const household of households.docs) {
+      const householdId = household.id;
+      const prefs = household.data().notificationPrefs || {};
+
+      // Only send if user opted in
+      if (prefs.dailyBrief !== true) continue;
+
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(todayStart.getTime() + 86400000);
+
+      // Count today's events
+      const eventsSnap = await db.collection('households').doc(householdId).collection('items')
+        .where('type', '==', 'event')
+        .where('status', '==', 'confirmed')
+        .where('date', '>=', Timestamp.fromDate(todayStart))
+        .where('date', '<', Timestamp.fromDate(todayEnd))
+        .get();
+
+      // Count today's deadlines
+      const deadlinesSnap = await db.collection('households').doc(householdId).collection('items')
+        .where('type', '==', 'deadline')
+        .where('status', '==', 'confirmed')
+        .where('date', '>=', Timestamp.fromDate(todayStart))
+        .where('date', '<', Timestamp.fromDate(todayEnd))
+        .get();
+
+      // Count pending review
+      const pendingSnap = await db.collection('households').doc(householdId).collection('items')
+        .where('status', '==', 'pendingReview')
+        .get();
+
+      const events = eventsSnap.size;
+      const deadlines = deadlinesSnap.size;
+      const pending = pendingSnap.size;
+
+      if (events === 0 && deadlines === 0 && pending === 0) continue;
+
+      const parts = [];
+      if (events > 0) parts.push(`${events} event${events > 1 ? 's' : ''}`);
+      if (deadlines > 0) parts.push(`${deadlines} deadline${deadlines > 1 ? 's' : ''}`);
+      if (pending > 0) parts.push(`${pending} to review`);
+
+      const body = parts.join(', ');
+      const firstEvent = eventsSnap.docs[0]?.data();
+      const title = firstEvent
+          ? `Today: ${firstEvent.title}${events > 1 ? ` + ${events - 1} more` : ''}`
+          : `Today: ${body}`;
+
+      await writeNotification(householdId, {
+        type: 'daily_brief',
+        title,
+        body,
+        priority: 'low',
+      });
     }
   }
 );
