@@ -62,6 +62,7 @@ abstract class ItemModel with _$ItemModel {
     required String title,
     String? summary,
     String? notes,
+    String? category,
     String? childId,
     String? childName,
     String? ownerId,

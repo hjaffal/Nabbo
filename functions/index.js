@@ -205,6 +205,7 @@ exports.extractSourceMessage = onDocumentCreated(
           status: 'pendingReview',
           action,
           title: item.title || item.summary || 'Untitled',
+          category: item.category || null,
           summary: item.summary || null,
           notes: item.notes || null,
           childId,
@@ -308,6 +309,7 @@ Return a JSON array. Each item:
 {
   "action": "create|update|cancel",
   "type": "event|task|deadline",
+  "category": "A single lowercase word describing what this is about (e.g., basketball, swimming, dentist, school, school trip, birthday, payment, form, pickup, homework, dance, music, hiking, cinema). Choose the most specific and natural category.",
   "title": "Short action-focused title (use existing item's title for update/cancel)",
   "targetItemTitle": "Title of existing item being changed (for update/cancel only, null for create)",
   "changes": { "fieldName": "new value" } (for update only, omit for create/cancel),

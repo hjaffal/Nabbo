@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/category_icons.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
 import '../../items/data/models/item_model.dart';
 import '../../items/data/repositories/item_repository.dart';
@@ -47,11 +48,11 @@ class ItemDetailScreen extends ConsumerWidget {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: _typeBgColor(item.type),
+                    color: CategoryIcons.getBackgroundColor(item.category, item.type),
                     borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                   ),
-                  child: Icon(_typeIcon(item.type),
-                      color: _typeColor(item.type), size: 26),
+                  child: Icon(CategoryIcons.getIcon(item.category, item.type),
+                      color: CategoryIcons.getColor(item.category, item.type), size: 26),
                 ),
                 const SizedBox(width: AppSpacing.lg),
                 Expanded(

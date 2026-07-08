@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/member_colors.dart';
+import '../../../core/theme/category_icons.dart';
 import '../../../core/services/weather_service.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
 import '../../household/data/models/household_model.dart';
@@ -558,7 +559,9 @@ class _FeedContent extends StatelessWidget {
   }
 
   FeedEntry _mapItem(ItemModel item) {
-    final typeInfo = _typeVisuals(item.type);
+    final icon = CategoryIcons.getIcon(item.category, item.type);
+    final color = CategoryIcons.getColor(item.category, item.type);
+    final bgColor = CategoryIcons.getBackgroundColor(item.category, item.type);
 
     return FeedEntry(
       id: item.id,
@@ -569,13 +572,13 @@ class _FeedContent extends StatelessWidget {
       dateTime: item.date,
       feedStatus: item.status.name,
       type: item.type.name,
-      icon: typeInfo.$1,
+      icon: icon,
       iconColor: item.status == ItemStatus.cancelled
           ? AppColors.textMuted
-          : typeInfo.$2,
+          : color,
       iconBg: item.status == ItemStatus.cancelled
           ? AppColors.surfaceSoft
-          : typeInfo.$3,
+          : bgColor,
       sourceMessageId: item.sourceMessageId,
       item: item,
       isRecurring: item.recurrence != null,
@@ -700,7 +703,9 @@ class _FeedContent extends StatelessWidget {
 
       final isCancelledOccurrence = cancelledDates.contains(dateStr);
 
-      final typeInfo = _typeVisuals(item.type);
+      final catIcon = CategoryIcons.getIcon(item.category, item.type);
+      final catColor = CategoryIcons.getColor(item.category, item.type);
+      final catBg = CategoryIcons.getBackgroundColor(item.category, item.type);
       entries.add(FeedEntry(
         id: '${item.id}_o$i',
         title: item.title,
@@ -710,9 +715,9 @@ class _FeedContent extends StatelessWidget {
         dateTime: occDateTime,
         feedStatus: isCancelledOccurrence ? 'cancelled' : 'confirmed',
         type: item.type.name,
-        icon: Icons.repeat_rounded,
-        iconColor: isCancelledOccurrence ? AppColors.textMuted : typeInfo.$2,
-        iconBg: isCancelledOccurrence ? AppColors.surfaceSoft : typeInfo.$3,
+        icon: catIcon,
+        iconColor: isCancelledOccurrence ? AppColors.textMuted : catColor,
+        iconBg: isCancelledOccurrence ? AppColors.surfaceSoft : catBg,
         item: item,
         isRecurring: true,
         occurrenceDate: occDate,
