@@ -256,8 +256,30 @@ exports.extractSourceMessage = onDocumentCreated(
 
       console.log(`Created ${extracted.length} items for message: ${messageId}`);
 
-      // Send notification
-      const autoApprovedCount = extracted.filter(i =>
+      // Write activity events
+      const actorId = message.userId || 'unknown';
+      const primaryParent = familyMembers.find(m => m.role === 'primaryParent');
+      const actorName = primaryParent ? primaryParent.name : 'Parent';
+
+      // Capture event
+      const captureEventRef = db.collection('households').doc(householdId).collection('activityEvents').doc();
+      await captureEventRef.set({
+        householdId,
+        activityType: 'capture',
+        actorId,
+        actorName,
+        title: `${extracted.length} item${extracted.length > 1 ? 's' : ''} from ${message.inputMethod || 'text'}`,
+        subtitle: null,
+        childId: null,
+        childName: null,
+        relatedItemId: null,
+        sourceMessageId: messageId,
+        metadata: { itemCount: extracted.length, inputMethod: message.inputMethod || 'text' },
+        createdAt: Timestamp.now(),
+      }).catch(e => console.error('Activity capture event error:', e.message));
+
+      // Auto-approval events
+      const autoApprovedItems = extracted.filter(i =>
         householdData.autoApproval === true &&
         i.overallConfidence === 'high' &&
         (!i.uncertainFields || i.uncertainFields.length === 0) &&
@@ -265,7 +287,27 @@ exports.extractSourceMessage = onDocumentCreated(
         (i.type || 'task') !== 'deadline' &&
         i.childName != null &&
         i.date != null
-      ).length;
+      );
+      for (const autoItem of autoApprovedItems) {
+        const autoEventRef = db.collection('households').doc(householdId).collection('activityEvents').doc();
+        await autoEventRef.set({
+          householdId,
+          activityType: 'autoApproval',
+          actorId: 'system',
+          actorName: 'Nabbo',
+          title: autoItem.title || autoItem.summary || 'Untitled',
+          subtitle: null,
+          childId: null,
+          childName: autoItem.childName || null,
+          relatedItemId: null,
+          sourceMessageId: messageId,
+          metadata: {},
+          createdAt: Timestamp.now(),
+        }).catch(e => console.error('Activity autoApproval event error:', e.message));
+      }
+
+      // Send notification
+      const autoApprovedCount = autoApprovedItems.length;
       await sendReviewNotification(householdId, extracted, messageId, autoApprovedCount);
     } catch (error) {
       console.error('Extraction error:', error);
@@ -969,5 +1011,40 @@ exports.buildAssociations = onDocumentUpdated(
     }
 
     console.log(`Built associations for item ${itemId}, child: ${childName}`);
+  }
+);
+
+/**
+ * Scheduled: cleanup activity events older than 90 days (daily at 3am).
+ */
+exports.cleanupActivityEvents = onSchedule(
+  { schedule: 'every day 03:00', region: LOCATION },
+  async () => {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const cutoff = Timestamp.fromDate(ninetyDaysAgo);
+
+    const households = await db.collection('households').get();
+
+    let totalDeleted = 0;
+    for (const household of households.docs) {
+      const householdId = household.id;
+      const oldEvents = await db
+        .collection('households').doc(householdId)
+        .collection('activityEvents')
+        .where('createdAt', '<', cutoff)
+        .limit(500)
+        .get();
+
+      if (oldEvents.empty) continue;
+
+      const batch = db.batch();
+      for (const doc of oldEvents.docs) {
+        batch.delete(doc.ref);
+      }
+      await batch.commit();
+      totalDeleted += oldEvents.size;
+    }
+
+    console.log(`Cleaned up ${totalDeleted} activity events older than 90 days.`);
   }
 );

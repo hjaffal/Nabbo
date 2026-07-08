@@ -45,13 +45,6 @@
       "collectionGroup": "activityEvents",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "activityEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
         { "fieldPath": "activityType", "order": "ASCENDING" },
         { "fieldPath": "relatedItemId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
