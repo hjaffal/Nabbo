@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
@@ -71,8 +71,19 @@ exports.extractSourceMessage = onDocumentCreated(
         return desc;
       });
 
+      // Load household intelligence (associations)
+      const associationsSnap = await db
+        .collection('households').doc(householdId).collection('associations').get();
+
+      const associations = {};
+      for (const doc of associationsSnap.docs) {
+        const d = doc.data();
+        if (!associations[d.childName]) associations[d.childName] = [];
+        associations[d.childName].push(`${d.type}:${d.value}`);
+      }
+
       // Build prompt and call Gemini
-      const prompt = buildExtractionPrompt(message.originalContent, familyMembers, existingContext);
+      const prompt = buildExtractionPrompt(message.originalContent, familyMembers, existingContext, associations);
 
       let result;
       const attachmentUrl = message.attachmentUrl || null;
@@ -236,7 +247,7 @@ exports.extractSourceMessage = onDocumentCreated(
  * Build the extraction prompt.
  * Includes: role, family members, existing items, today's date, rules, output schema.
  */
-function buildExtractionPrompt(content, familyMembers, existingContext = []) {
+function buildExtractionPrompt(content, familyMembers, existingContext = [], associations = {}) {
   const today = new Date().toISOString().split('T')[0];
   const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
 
@@ -248,11 +259,22 @@ function buildExtractionPrompt(content, familyMembers, existingContext = []) {
     ? `\n\nEXISTING CONFIRMED ITEMS IN THIS HOUSEHOLD (use these for change detection):\n${existingContext.join('\n')}\n\nIMPORTANT: If the input message cancels, reschedules, or modifies any of the items above, you MUST use action "update" or "cancel" with targetItemTitle matching the existing item's title. Do NOT create a new item if it refers to an existing one.`
     : '';
 
+  // Build household intelligence context
+  let intelligenceStr = '';
+  const childNames = Object.keys(associations);
+  if (childNames.length > 0) {
+    intelligenceStr = '\n\nHOUSEHOLD INTELLIGENCE (use this to infer which child is affected when not explicitly mentioned):\n';
+    for (const child of childNames) {
+      intelligenceStr += `- ${child}: ${associations[child].join(', ')}\n`;
+    }
+    intelligenceStr += '\nIf the message mentions an activity, contact, location, or schedule that matches one child, set childName to that child. If multiple children match, set childName to null and add "childName" to uncertainFields.';
+  }
+
   return `You are Nabbo, a family logistics AI. Extract actionable items from the message below.
 
 Today is ${dayName}, ${today}.
 
-${membersStr}${contextStr}
+${membersStr}${contextStr}${intelligenceStr}
 
 RULES:
 - You are helping a busy parent manage family logistics. Extract ANYTHING that requires parent attention or action.
@@ -528,5 +550,125 @@ exports.checkDeadlines = onSchedule(
         console.error(`Notification error for ${householdId}:`, err.message);
       }
     }
+  }
+);
+
+/**
+ * Triggered when an item is updated (e.g., approved).
+ * Builds household associations for the intelligence layer.
+ */
+exports.buildAssociations = onDocumentUpdated(
+  {
+    document: 'households/{householdId}/items/{itemId}',
+  },
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    const householdId = event.params.householdId;
+    const itemId = event.params.itemId;
+
+    // Only trigger when item is approved (status changes to confirmed)
+    if (before.status === 'confirmed' || after.status !== 'confirmed') return;
+    // Must have a child assigned
+    if (!after.childId || !after.childName) return;
+
+    const childId = after.childId;
+    const childName = after.childName;
+    const associationsRef = db.collection('households').doc(householdId).collection('associations');
+
+    // Helper: upsert an association
+    async function upsertAssociation(type, value) {
+      if (!value || value.trim() === '') return;
+      const normalizedValue = value.toLowerCase().trim();
+
+      // Check if association already exists
+      const existing = await associationsRef
+        .where('childId', '==', childId)
+        .where('type', '==', type)
+        .where('value', '==', normalizedValue)
+        .limit(1)
+        .get();
+
+      if (existing.empty) {
+        // Create new association
+        await associationsRef.add({
+          childId,
+          childName,
+          type,
+          value: normalizedValue,
+          confidence: 'inferred',
+          sourceItemIds: [itemId],
+          lastSeen: Timestamp.now(),
+          count: 1,
+        });
+      } else {
+        // Update existing
+        const doc = existing.docs[0];
+        const data = doc.data();
+        const sourceItems = data.sourceItemIds || [];
+        if (!sourceItems.includes(itemId)) sourceItems.push(itemId);
+
+        const newCount = (data.count || 0) + 1;
+        await doc.ref.update({
+          lastSeen: Timestamp.now(),
+          count: newCount,
+          sourceItemIds: sourceItems,
+          // Auto-promote to confirmed after 4 occurrences
+          confidence: newCount >= 4 ? 'confirmed' : data.confidence,
+        });
+      }
+    }
+
+    // Extract associations from the approved item
+    const title = (after.title || '').toLowerCase();
+
+    // 1. Activity association (extract key activity words from title)
+    const activityWords = title.replace(/[^a-z\s]/g, '').split(' ').filter(w => w.length > 3);
+    // Use the most significant word (longest, excluding common words)
+    const stopWords = ['with', 'from', 'this', 'that', 'have', 'been', 'will', 'your', 'their', 'about', 'school', 'class'];
+    const significantWords = activityWords.filter(w => !stopWords.includes(w));
+    if (significantWords.length > 0) {
+      // Use title as activity if it looks like an activity name
+      const activityName = significantWords.sort((a, b) => b.length - a.length)[0];
+      if (activityName && activityName.length > 3) {
+        await upsertAssociation('activity', activityName);
+      }
+    }
+
+    // 2. Location association
+    if (after.location) {
+      await upsertAssociation('location', after.location);
+    }
+
+    // 3. Schedule association (day of week from recurrence or date)
+    if (after.recurrence && after.recurrence.dayOfWeek) {
+      await upsertAssociation('schedule', after.recurrence.dayOfWeek);
+    } else if (after.date) {
+      const d = after.date.toDate ? after.date.toDate() : new Date(after.date);
+      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      await upsertAssociation('schedule', days[d.getDay()]);
+    }
+
+    // 4. Contact association (from source message sender)
+    if (after.sourceMessageId) {
+      try {
+        const sourceDoc = await db.collection('households').doc(householdId)
+          .collection('sourceMessages').doc(after.sourceMessageId).get();
+        if (sourceDoc.exists) {
+          const sourceData = sourceDoc.data();
+          // If email forwarding, extract sender from content
+          if (sourceData.inputMethod === 'emailForwarding') {
+            const content = sourceData.originalContent || '';
+            // Try to find email address in content
+            const emailMatch = content.match(/[\w.-]+@[\w.-]+\.\w+/);
+            if (emailMatch) {
+              await upsertAssociation('contact', emailMatch[0]);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    console.log(`Built associations for item ${itemId}, child: ${childName}`);
   }
 );
