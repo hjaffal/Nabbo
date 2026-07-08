@@ -461,18 +461,15 @@ class _ItemReviewCard extends ConsumerWidget {
     final repo = ref.read(itemRepositoryProvider);
 
     if (item.action == ItemAction.update && item.targetItemId != null) {
-      // Apply changes to target item
       final updates = <String, dynamic>{};
       for (final entry in item.changes.entries) {
         updates[entry.key] = entry.value;
       }
-      // Also parse date if it's in changes
       if (item.date != null && item.changes.containsKey('date')) {
-        updates['date'] = item.date; // Already a Timestamp from Firestore
+        updates['date'] = item.date;
       }
       await repo.approveUpdate(householdId, item.id, item.targetItemId!, updates);
     } else if (item.action == ItemAction.cancel && item.targetItemId != null) {
-      // Cancel the target item
       final isRecurring = item.recurrence != null;
       final cancelDate = item.date != null
           ? '${item.date!.year}-${item.date!.month.toString().padLeft(2, '0')}-${item.date!.day.toString().padLeft(2, '0')}'
@@ -480,7 +477,15 @@ class _ItemReviewCard extends ConsumerWidget {
       await repo.approveCancel(householdId, item.id, item.targetItemId!,
           cancelDate: cancelDate, isRecurring: isRecurring);
     } else {
-      // Normal create approval
+      // Normal create approval — require date if missing
+      if (item.date == null && item.action == ItemAction.create) {
+        final pickedDate = await _pickDateForApproval(context);
+        if (pickedDate == null) return; // User cancelled
+        // Save date then approve
+        await repo.updateItem(householdId, item.id, {
+          'date': Timestamp.fromDate(pickedDate),
+        });
+      }
       await repo.approve(householdId, item.id);
     }
 
@@ -490,6 +495,33 @@ class _ItemReviewCard extends ConsumerWidget {
           : (item.action == ItemAction.update ? 'Change applied.' : 'Approved and added to feed.');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
+  }
+
+  /// Shows a date+time picker when approving an item without a date.
+  /// Defaults to tomorrow morning (09:00).
+  Future<DateTime?> _pickDateForApproval(BuildContext context) async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final defaultDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9, 0);
+
+    final date = await showDatePicker(
+      context: context,
+      initialDate: defaultDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2030),
+      helpText: 'When is this due?',
+    );
+    if (date == null) return null;
+
+    if (!context.mounted) return null;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
+      helpText: 'What time?',
+    );
+
+    final hour = time?.hour ?? 9;
+    final minute = time?.minute ?? 0;
+    return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {

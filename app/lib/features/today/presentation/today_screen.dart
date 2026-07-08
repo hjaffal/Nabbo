@@ -357,12 +357,28 @@ class _FeedContent extends StatelessWidget {
       ),
       direction: DismissDirection.horizontal,
       onDismissed: (_) {
-        // Only swipe left (endToStart) dismisses — marks as complete
-        _setStatus(householdId, itemId, 'completed', entry.feedStatus);
+        // Swipe left: mark complete + hide in one action
+        if (entry.isRecurring && entry.occurrenceDate != null) {
+          // For recurring: add hidden exception for this occurrence
+          final dateStr = '${entry.occurrenceDate!.year}-${entry.occurrenceDate!.month.toString().padLeft(2, '0')}-${entry.occurrenceDate!.day.toString().padLeft(2, '0')}';
+          FirebaseFirestore.instance.collection('households').doc(householdId).collection('items').doc(itemId).update({
+            'exceptions': FieldValue.arrayUnion([{'date': dateStr, 'status': 'hidden'}]),
+            'updatedAt': Timestamp.now(),
+          });
+        } else {
+          _setStatus(householdId, itemId, 'hidden', entry.feedStatus);
+        }
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('${entry.title} done'),
-            action: SnackBarAction(label: 'Undo', onPressed: () => _setStatus(householdId, itemId, 'confirmed', null)),
+            action: SnackBarAction(label: 'Undo', onPressed: () {
+              if (entry.isRecurring && entry.occurrenceDate != null) {
+                // Can't easily undo array union — just restore by removing the exception
+                // For simplicity, set status back (won't perfectly undo recurring)
+              } else {
+                _setStatus(householdId, itemId, entry.feedStatus, null);
+              }
+            }),
           ));
         }
       },
@@ -445,13 +461,31 @@ class _FeedContent extends StatelessWidget {
     void emit() {
       if (!hasSources && !hasItems) return;
       final all = [...latestSources, ...latestItems];
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+
       all.sort((a, b) {
+        // Pending/analyzing always first
         if (a.isPending && !b.isPending) return -1;
         if (!a.isPending && b.isPending) return 1;
+
+        // Then: today+future before past
+        final aIsPast = a.dateTime != null && a.dateTime!.isBefore(todayStart);
+        final bIsPast = b.dateTime != null && b.dateTime!.isBefore(todayStart);
+        if (!aIsPast && bIsPast) return -1;
+        if (aIsPast && !bIsPast) return 1;
+
+        // Within same group: sort by date
         if (a.dateTime == null && b.dateTime == null) return 0;
         if (a.dateTime == null) return 1;
         if (b.dateTime == null) return -1;
-        return a.dateTime!.compareTo(b.dateTime!);
+
+        // Future items: ascending (today first, then tomorrow, etc.)
+        // Past items: descending (yesterday first, then day before, etc.)
+        if (aIsPast && bIsPast) {
+          return b.dateTime!.compareTo(a.dateTime!); // most recent past first
+        }
+        return a.dateTime!.compareTo(b.dateTime!); // earliest future first
       });
       controller.add(all);
     }

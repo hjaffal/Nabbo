@@ -33,6 +33,7 @@ exports.extractSourceMessage = onDocumentCreated(
     const messageId = event.params.messageId;
 
     console.log(`Processing source message: ${messageId} for household: ${householdId}`);
+    console.log(`Content length: ${(message.originalContent || '').length}, inputMethod: ${message.inputMethod}`);
 
     await snapshot.ref.update({ processingStatus: 'processing' });
 
@@ -82,8 +83,12 @@ exports.extractSourceMessage = onDocumentCreated(
         associations[d.childName].push(`${d.type}:${d.value}`);
       }
 
+      // Clean content (strip HTML tags if present)
+      let cleanContent = message.originalContent || '';
+      cleanContent = cleanContent.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+
       // Build prompt and call Gemini
-      const prompt = buildExtractionPrompt(message.originalContent, familyMembers, existingContext, associations);
+      const prompt = buildExtractionPrompt(cleanContent, familyMembers, existingContext, associations);
 
       let result;
       const attachmentUrl = message.attachmentUrl || null;
@@ -136,6 +141,7 @@ exports.extractSourceMessage = onDocumentCreated(
       const extracted = parseExtractionResponse(text);
 
       if (!extracted || extracted.length === 0) {
+        console.log(`No items extracted for ${messageId}. AI response: ${text?.substring(0, 300)}`);
         await snapshot.ref.update({ processingStatus: 'noAction', processedAt: Timestamp.now() });
         return;
       }
@@ -295,7 +301,8 @@ RULES:
 - For updates: include a "changes" object with only the fields that changed.
 - Mark uncertain fields in uncertainFields array.
 - A single message can produce multiple items. Split them.
-- ONLY return empty array [] if the message is truly personal/social with zero family logistics relevance (e.g., "happy birthday!", "see you at the party").
+- CRITICAL: School emails, newsletters, and forwards from institutions ALWAYS have actions (enrollment deadlines, events, forms to fill, things to prepare). NEVER return empty for these. Look for dates, deadlines, enrollment periods, forms, payments, or things parents need to decide.
+- ONLY return empty array [] if the message is truly personal/social with zero logistics relevance (e.g., "happy birthday!", "thanks for the gift").
 
 Return a JSON array. Each item:
 {
