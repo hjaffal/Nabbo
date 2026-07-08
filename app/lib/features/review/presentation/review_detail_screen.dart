@@ -7,6 +7,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
 import '../../items/data/models/item_model.dart';
 import '../../items/data/repositories/item_repository.dart';
+import '../../household/data/models/family_member_model.dart';
+import '../../household/data/repositories/household_repository.dart';
 import '../../today/presentation/edit_item_screen.dart';
 
 /// Shows the review detail for a source message.
@@ -430,6 +432,16 @@ class _ItemReviewCard extends ConsumerWidget {
             ),
           ],
 
+          // Ambiguity picker — "Who is this about?"
+          if (item.childName == null &&
+              item.uncertainFields.contains('childName')) ...[
+            const SizedBox(height: AppSpacing.md),
+            _AmbiguityPicker(
+              item: item,
+              householdId: householdId,
+            ),
+          ],
+
           const SizedBox(height: AppSpacing.lg),
 
           // Actions
@@ -617,6 +629,148 @@ class _TypeChip extends StatelessWidget {
       child: Text(label,
           style:
               TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+}
+
+
+/// Inline ambiguity picker — "Who is this about?"
+/// Shown when AI couldn't determine which child an item is about.
+class _AmbiguityPicker extends ConsumerStatefulWidget {
+  final ItemModel item;
+  final String householdId;
+
+  const _AmbiguityPicker({required this.item, required this.householdId});
+
+  @override
+  ConsumerState<_AmbiguityPicker> createState() => _AmbiguityPickerState();
+}
+
+class _AmbiguityPickerState extends ConsumerState<_AmbiguityPicker> {
+  List<FamilyMemberModel> _children = [];
+  bool _loading = true;
+  String? _selectedChildId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChildren();
+  }
+
+  Future<void> _loadChildren() async {
+    final repo = ref.read(householdRepositoryProvider);
+    final members = await repo.getFamilyMembers(widget.householdId);
+    final children =
+        members.where((m) => m.role == MemberRole.child).toList();
+    if (mounted) {
+      setState(() {
+        _children = children;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _selectChild(FamilyMemberModel child) async {
+    setState(() => _selectedChildId = child.id);
+    final repo = ref.read(itemRepositoryProvider);
+    await repo.updateItem(widget.householdId, widget.item.id, {
+      'childId': child.id,
+      'childName': child.name,
+      'uncertainFields': FieldValue.arrayRemove(['childName']),
+    });
+  }
+
+  /// Get a label from suggestedActions if available
+  String get _label {
+    for (final action in widget.item.suggestedActions) {
+      if (action.toLowerCase().contains('is this about') ||
+          action.toLowerCase().contains('which child') ||
+          action.toLowerCase().contains('who is this')) {
+        return action;
+      }
+    }
+    return 'Who is this about?';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const SizedBox.shrink();
+    if (_children.isEmpty) return const SizedBox.shrink();
+    if (_selectedChildId != null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warmYellow.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(
+          color: AppColors.warmYellow.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.person_search_rounded,
+                  size: 16, color: AppColors.warmYellow),
+              const SizedBox(width: 6),
+              Text(
+                _label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _children.map((child) {
+              final color = child.color != null
+                  ? Color(int.parse(child.color!, radix: 16) | 0xFF000000)
+                  : AppColors.primary;
+              return GestureDetector(
+                onTap: () => _selectChild(child),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        child.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 }

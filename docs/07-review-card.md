@@ -128,6 +128,37 @@ Uncertain fields are **editable directly from the card**.
 
 ---
 
+## Ambiguity Picker
+
+When the AI cannot determine which child is affected (childName is null and "childName" is in `uncertainFields`), the Review Card shows an inline **ambiguity picker** — a quick-tap UI asking "Who is this about?"
+
+### Behavior
+
+- Appears as a prominent inline section within the review card (above the action buttons)
+- Shows pill-shaped buttons for each child in the household, plus an "All" option
+- Each pill shows the child's color dot + name
+- Tapping a child pill immediately assigns `childId` and `childName` on the item
+- After selection, the picker disappears and the child chip appears in the card header
+- Selection also feeds back into the household intelligence associations (strengthens the link between the child and the activity/contact/location in this item)
+- If `suggestedActions` contains a string matching "Is this about...?" or similar, the picker uses that as its label; otherwise defaults to "Who is this about?"
+
+### Design
+
+- Background: `AppColors.warmYellow.withOpacity(0.1)` (attention-drawing but not alarming)
+- Border: subtle yellow border
+- Label: "Who is this about?" in semi-bold
+- Child pills: colored dot + name, tappable, with light background matching child's color
+- Compact height, fits naturally between the item fields and action buttons
+
+### Rules
+
+- Only shown when `childName` is null AND `uncertainFields` contains "childName"
+- Only shown for items with `status: pendingReview`
+- Does NOT block approval — user can approve without selecting a child
+- If user taps "Approve" without selecting a child, item is approved with childName: null (owner gap remains visible)
+
+---
+
 ## Source Message Rules
 
 - Original source always available via `sourceMessageId` link

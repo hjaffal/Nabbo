@@ -130,6 +130,7 @@
 | Auto-confidence promotion | After 4+ occurrences → confirmed |
 | Injected into AI prompt | Used for child inference when name not mentioned |
 | Email sender learning | Associates sender email with child |
+| Ambiguity picker UI | "Who is this about?" quick picker in review when childName is uncertain |
 
 ### Infrastructure
 
@@ -161,10 +162,9 @@
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
 | 4 | Household intelligence — email sender learning | Small | Phase 3: associate email senders with children on approval |
-| 5 | Household intelligence — ambiguity picker UI | Medium | "Is this about Adam or Yara?" quick picker in review |
-| 6 | Onboarding improvement | Small | Prompt in Feed if no children added yet |
-| 7 | Item category editable by user | Small | Add category text field to Edit Item screen |
-| 8 | Auto-approval ✨ indicator on feed cards | Small | Show subtle indicator for first 24h |
+| 5 | Onboarding improvement | Small | Prompt in Feed if no children added yet |
+| 6 | Item category editable by user | Small | Add category text field to Edit Item screen |
+| 7 | Auto-approval ✨ indicator on feed cards | Small | Show subtle indicator for first 24h |
 
 
 

@@ -223,11 +223,13 @@ When two children share an association (both do basketball):
 - Track which days/times are associated with which child
 - Use for resolution when a message mentions a day but no child
 
-### Phase 5: Ambiguity UI
+### Phase 5: Ambiguity UI ✅
 
-- When AI can't resolve (multiple matches), show a quick picker in the review card
+- When AI can't resolve (multiple matches or no match), show a quick picker in the review card
 - "Who is this about? [Adam] [Yara] [Both]"
 - Selection feeds back into associations
+- Picker appears inline in the `_ItemReviewCard` widget when `childName` is null and `uncertainFields` contains "childName"
+- Selecting a child updates the item immediately and strengthens associations
 
 ---
 
