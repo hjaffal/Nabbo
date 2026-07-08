@@ -329,45 +329,74 @@ class _ItemReviewCard extends ConsumerWidget {
           ],
           const SizedBox(height: AppSpacing.sm),
 
-          // For updates: show what changed
+          // For updates: show what changed in a simple, clear way
           if (isUpdate && item.changes.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            ...item.changes.entries.map((e) {
-              final oldVal = item.previousValues[e.key];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.arrow_forward_rounded, size: 12, color: AppColors.softBlue),
-                    const SizedBox(width: 4),
-                    Text('${_formatKey(e.key)}: ',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-                    if (oldVal != null) ...[
-                      Text('$oldVal',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              decoration: TextDecoration.lineThrough, color: AppColors.textMuted)),
-                      Text(' → ', style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                    Flexible(
-                      child: Text('${e.value}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
-                    ),
-                  ],
-                ),
-              );
-            }),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceSoft,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('What changed:',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  ...item.changes.entries.map((e) {
+                    final oldVal = item.previousValues[e.key];
+                    final label = _formatKey(e.key);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: RichText(
+                        text: TextSpan(
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          children: [
+                            TextSpan(text: '$label: ',
+                                style: TextStyle(color: AppColors.textSecondary)),
+                            if (oldVal != null) ...[
+                              TextSpan(text: '$oldVal',
+                                  style: TextStyle(
+                                      decoration: TextDecoration.lineThrough,
+                                      color: AppColors.textMuted)),
+                              const TextSpan(text: '  →  '),
+                            ],
+                            TextSpan(text: '${e.value}',
+                                style: const TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
           ],
 
-          // For cancellations: show what's being cancelled
+          // For cancellations: simple clear message
           if (isCancel) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Icon(Icons.cancel_rounded, size: 14, color: AppColors.softCoral),
-                const SizedBox(width: 4),
-                Text('This will cancel the existing item',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.softCoral)),
-              ],
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.coralLight,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.event_busy_rounded, size: 20, color: AppColors.softCoral),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.summary ?? 'This event has been cancelled',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.softCoral),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
 
