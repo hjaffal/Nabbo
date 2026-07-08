@@ -43,6 +43,12 @@ class _EditItemScreenState extends ConsumerState<EditItemScreen> {
   ItemType _type = ItemType.event;
   bool _isSaving = false;
 
+  // Recurrence
+  bool _repeats = false;
+  String _frequency = 'weekly';
+  String? _dayOfWeek;
+  DateTime? _recurrenceEnd;
+
   List<FamilyMemberModel> _members = [];
 
   // Google Places API key
@@ -65,6 +71,16 @@ class _EditItemScreenState extends ConsumerState<EditItemScreen> {
         ? TimeOfDay(hour: item.date!.hour, minute: item.date!.minute)
         : null;
     _type = item.type;
+
+    // Recurrence
+    if (item.recurrence != null) {
+      _repeats = true;
+      _frequency = item.recurrence!.frequency;
+      _dayOfWeek = item.recurrence!.dayOfWeek;
+      if (item.recurrence!.endDate != null) {
+        _recurrenceEnd = DateTime.tryParse(item.recurrence!.endDate!);
+      }
+    }
 
     _loadMembers();
   }
@@ -148,6 +164,24 @@ class _EditItemScreenState extends ConsumerState<EditItemScreen> {
     if (_endDate != widget.item.endDate) {
       updates['endDate'] =
           _endDate != null ? Timestamp.fromDate(_endDate!) : null;
+    }
+
+    // Recurrence
+    if (_repeats) {
+      final startDate = _date ?? DateTime.now();
+      final startStr = '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}';
+      final endStr = _recurrenceEnd != null
+          ? '${_recurrenceEnd!.year}-${_recurrenceEnd!.month.toString().padLeft(2, '0')}-${_recurrenceEnd!.day.toString().padLeft(2, '0')}'
+          : null;
+      updates['recurrence'] = {
+        'frequency': _frequency,
+        'dayOfWeek': _dayOfWeek,
+        'startDate': startStr,
+        'endDate': endStr,
+      };
+    } else if (widget.item.recurrence != null) {
+      // Was recurring, now not
+      updates['recurrence'] = null;
     }
 
     if (updates.isNotEmpty) {
@@ -332,6 +366,76 @@ class _EditItemScreenState extends ConsumerState<EditItemScreen> {
               hasValue: _endDate != null,
               onTap: _pickEndDate,
             ),
+
+            const SizedBox(height: AppSpacing.xl),
+
+            // Recurrence
+            _SectionLabel(label: 'Recurrence'),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Repeats'),
+              value: _repeats,
+              onChanged: (v) => setState(() => _repeats = v),
+              contentPadding: EdgeInsets.zero,
+            ),
+            if (_repeats) ...[
+              const SizedBox(height: 8),
+              // Frequency
+              DropdownButtonFormField<String>(
+                value: _frequency,
+                decoration: const InputDecoration(
+                  labelText: 'Frequency',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                  DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                  DropdownMenuItem(value: 'biweekly', child: Text('Every 2 weeks')),
+                  DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                ],
+                onChanged: (v) => setState(() => _frequency = v!),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Day of week (for weekly/biweekly/monthly)
+              if (_frequency != 'daily')
+                DropdownButtonFormField<String>(
+                  value: _dayOfWeek,
+                  decoration: const InputDecoration(
+                    labelText: 'Day of week',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'monday', child: Text('Monday')),
+                    DropdownMenuItem(value: 'tuesday', child: Text('Tuesday')),
+                    DropdownMenuItem(value: 'wednesday', child: Text('Wednesday')),
+                    DropdownMenuItem(value: 'thursday', child: Text('Thursday')),
+                    DropdownMenuItem(value: 'friday', child: Text('Friday')),
+                    DropdownMenuItem(value: 'saturday', child: Text('Saturday')),
+                    DropdownMenuItem(value: 'sunday', child: Text('Sunday')),
+                  ],
+                  onChanged: (v) => setState(() => _dayOfWeek = v),
+                ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Recurrence end date
+              _PickerButton(
+                icon: Icons.event_busy,
+                label: _recurrenceEnd != null
+                    ? 'Until: ${_recurrenceEnd!.day}/${_recurrenceEnd!.month}/${_recurrenceEnd!.year}'
+                    : 'Repeats forever (tap to set end)',
+                hasValue: _recurrenceEnd != null,
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _recurrenceEnd ?? DateTime.now().add(const Duration(days: 90)),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2030),
+                  );
+                  if (picked != null) setState(() => _recurrenceEnd = picked);
+                },
+              ),
+            ],
 
             const SizedBox(height: AppSpacing.xxxl),
           ],
