@@ -14,6 +14,7 @@ The following documents are the source of truth for Nabbo's product and technica
 - `docs/09-notification-strategy.md` — Notification Strategy
 - `docs/10-technical-architecture.md` — Technical Architecture
 - `docs/11-layouts-specs.md` — Layout Specifications (UI component designs)
+- `docs/13-household-intelligence.md` — Household Intelligence Layer (pattern learning, child inference)
 
 ## Rules
 
