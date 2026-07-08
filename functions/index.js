@@ -472,14 +472,25 @@ function parseDate(dateStr, timezone) {
       }
     }
 
-    // 4. Combine date + time — store as-is (no timezone conversion)
-    // Times from user input represent "wall clock time" — store directly in UTC
-    // The app displays hours/minutes directly without timezone offset
+    // 4. Combine date + time, convert from household local to real UTC
     if (targetDate) {
       if (hours !== null) {
         targetDate.setHours(hours, minutes, 0, 0);
       }
-      return Timestamp.fromDate(targetDate);
+      // targetDate is now set with hours in UTC (server time)
+      // We need to subtract the household timezone offset to get real UTC
+      // e.g., 16:00 local in UTC+2 → 14:00 UTC
+      try {
+        const utcStr = targetDate.toLocaleString('en-US', { timeZone: 'UTC' });
+        const localStr = targetDate.toLocaleString('en-US', { timeZone: timezone });
+        const utcDate = new Date(utcStr);
+        const localDate = new Date(localStr);
+        const offsetMs = localDate.getTime() - utcDate.getTime();
+        // Subtract offset: 16:00 (meant as local) → 14:00 UTC for UTC+2
+        return Timestamp.fromDate(new Date(targetDate.getTime() - offsetMs));
+      } catch (_) {
+        return Timestamp.fromDate(targetDate);
+      }
     }
 
     // 5. Last resort
