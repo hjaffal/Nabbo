@@ -242,7 +242,7 @@ exports.extractSourceMessage = onDocumentCreated(
       console.log(`Created ${extracted.length} items for message: ${messageId}`);
 
       // Send notification
-      await sendReviewNotification(householdId, extracted);
+      await sendReviewNotification(householdId, extracted, messageId);
     } catch (error) {
       console.error('Extraction error:', error);
       await snapshot.ref.update({ processingStatus: 'failed', processedAt: Timestamp.now() });
@@ -488,36 +488,86 @@ function parseDate(dateStr) {
 }
 
 /**
- * Send push notification when items need review.
+ * Write a notification to Firestore AND send FCM push.
+ * This is the central notification function — all notification triggers use this.
  */
-async function sendReviewNotification(householdId, items) {
+async function writeNotification(householdId, { type, title, body, itemId, sourceMessageId, priority }) {
   try {
-    const householdDoc = await db.collection('households').doc(householdId).get();
-    if (!householdDoc.exists) return;
-
-    const userId = householdDoc.data().primaryUserId;
-    const tokenDoc = await db.collection('userTokens').doc(userId).get();
-    if (!tokenDoc.exists || !tokenDoc.data().fcmToken) return;
-
-    const count = items.length;
-    const first = items[0];
-
-    await messaging.send({
-      token: tokenDoc.data().fcmToken,
-      notification: {
-        title: `${count} item${count > 1 ? 's' : ''} to review`,
-        body: first.title || first.summary || 'New items extracted',
-      },
-      data: { type: 'review_needed', householdId },
-      apns: { payload: { aps: { badge: count, sound: 'default' } } },
+    // Write to notifications collection
+    const notifRef = db.collection('households').doc(householdId).collection('notifications').doc();
+    await notifRef.set({
+      type: type || 'general',
+      title: title || '',
+      body: body || '',
+      itemId: itemId || null,
+      sourceMessageId: sourceMessageId || null,
+      priority: priority || 'medium',
+      read: false,
+      actedOn: false,
+      createdAt: Timestamp.now(),
     });
+
+    // Send FCM push (best-effort)
+    try {
+      const householdDoc = await db.collection('households').doc(householdId).get();
+      if (!householdDoc.exists) return;
+
+      const userId = householdDoc.data().primaryUserId;
+      const tokenDoc = await db.collection('userTokens').doc(userId).get();
+      if (!tokenDoc.exists || !tokenDoc.data().fcmToken) return;
+
+      // Count unread for badge
+      const unreadSnap = await db.collection('households').doc(householdId)
+        .collection('notifications').where('read', '==', false).count().get();
+      const badgeCount = unreadSnap.data().count || 0;
+
+      await messaging.send({
+        token: tokenDoc.data().fcmToken,
+        notification: { title, body },
+        data: { type, householdId, itemId: itemId || '', notificationId: notifRef.id },
+        apns: { payload: { aps: { badge: badgeCount, sound: 'default' } } },
+      });
+    } catch (fcmErr) {
+      console.error('FCM send error:', fcmErr.message);
+    }
   } catch (error) {
-    console.error('Notification error:', error.message);
+    console.error('writeNotification error:', error.message);
   }
 }
 
 /**
- * Scheduled: check for overdue deadlines every hour.
+ * Send notification after items are extracted.
+ */
+async function sendReviewNotification(householdId, items, sourceMessageId) {
+  const count = items.length;
+  const first = items[0];
+  const hasChange = items.some(i => i.action === 'update' || i.action === 'cancel');
+
+  let title, body, type;
+  if (hasChange) {
+    const changeItem = items.find(i => i.action === 'update' || i.action === 'cancel');
+    title = changeItem.action === 'cancel'
+        ? `${changeItem.title} cancelled`
+        : `${changeItem.title} changed`;
+    body = changeItem.summary || 'Tap to review the change';
+    type = 'change_detected';
+  } else {
+    title = `${count} item${count > 1 ? 's' : ''} to review`;
+    body = first.title || first.summary || 'New items extracted';
+    type = 'review_needed';
+  }
+
+  await writeNotification(householdId, {
+    type,
+    title,
+    body,
+    sourceMessageId,
+    priority: hasChange ? 'high' : 'medium',
+  });
+}
+
+/**
+ * Scheduled: check for deadlines due within 24h (every hour).
  */
 exports.checkDeadlines = onSchedule(
   { schedule: 'every 60 minutes', region: LOCATION },
@@ -530,7 +580,6 @@ exports.checkDeadlines = onSchedule(
     for (const household of households.docs) {
       const householdId = household.id;
 
-      // Deadlines due within 24h
       const deadlines = await db
         .collection('households').doc(householdId).collection('items')
         .where('type', '==', 'deadline')
@@ -541,22 +590,90 @@ exports.checkDeadlines = onSchedule(
 
       if (deadlines.empty) continue;
 
-      const userId = household.data().primaryUserId;
-      const tokenDoc = await db.collection('userTokens').doc(userId).get();
-      if (!tokenDoc.exists || !tokenDoc.data().fcmToken) continue;
+      // Check which deadlines already have notifications (dedup)
+      for (const deadline of deadlines.docs) {
+        const itemId = deadline.id;
+        const itemData = deadline.data();
 
-      try {
-        await messaging.send({
-          token: tokenDoc.data().fcmToken,
-          notification: {
-            title: 'Deadlines coming up',
-            body: `${deadlines.size} deadline${deadlines.size > 1 ? 's' : ''} due within 24 hours`,
-          },
-          data: { type: 'deadline_reminder', householdId },
-          apns: { payload: { aps: { sound: 'default' } } },
+        // Check if we already notified for this item today
+        const existingNotif = await db.collection('households').doc(householdId)
+          .collection('notifications')
+          .where('itemId', '==', itemId)
+          .where('type', '==', 'deadline')
+          .where('createdAt', '>=', Timestamp.fromDate(new Date(now.getTime() - 86400000)))
+          .limit(1)
+          .get();
+
+        if (!existingNotif.empty) continue; // Already notified
+
+        const dueDate = itemData.date.toDate();
+        const hoursLeft = Math.round((dueDate - now) / 3600000);
+
+        await writeNotification(householdId, {
+          type: 'deadline',
+          title: itemData.title,
+          body: hoursLeft <= 1 ? 'Due now!' : `Due in ${hoursLeft} hours`,
+          itemId,
+          priority: hoursLeft <= 3 ? 'high' : 'medium',
         });
-      } catch (err) {
-        console.error(`Notification error for ${householdId}:`, err.message);
+      }
+    }
+  }
+);
+
+/**
+ * Scheduled: check for upcoming events in next 2 hours (every 30 min).
+ */
+exports.checkUpcomingEvents = onSchedule(
+  { schedule: 'every 30 minutes', region: LOCATION },
+  async () => {
+    const now = new Date();
+    const in2h = new Date(now.getTime() + 7200000);
+
+    const households = await db.collection('households').get();
+
+    for (const household of households.docs) {
+      const householdId = household.id;
+
+      const events = await db
+        .collection('households').doc(householdId).collection('items')
+        .where('type', '==', 'event')
+        .where('status', '==', 'confirmed')
+        .where('date', '>=', Timestamp.fromDate(now))
+        .where('date', '<=', Timestamp.fromDate(in2h))
+        .get();
+
+      if (events.empty) continue;
+
+      for (const event of events.docs) {
+        const itemId = event.id;
+        const itemData = event.data();
+
+        // Dedup: check if we already sent a reminder for this event
+        const existingNotif = await db.collection('households').doc(householdId)
+          .collection('notifications')
+          .where('itemId', '==', itemId)
+          .where('type', '==', 'event_reminder')
+          .limit(1)
+          .get();
+
+        if (!existingNotif.empty) continue;
+
+        const eventTime = itemData.date.toDate();
+        const minsLeft = Math.round((eventTime - now) / 60000);
+        const timeStr = `${eventTime.getHours().toString().padStart(2, '0')}:${eventTime.getMinutes().toString().padStart(2, '0')}`;
+
+        let body = `At ${timeStr}`;
+        if (itemData.location) body += ` — ${itemData.location}`;
+        if (itemData.childName) body = `${itemData.childName}: ${body}`;
+
+        await writeNotification(householdId, {
+          type: 'event_reminder',
+          title: itemData.title,
+          body,
+          itemId,
+          priority: minsLeft <= 60 ? 'high' : 'medium',
+        });
       }
     }
   }

@@ -17,6 +17,7 @@ import '../../household/data/repositories/household_repository.dart';
 import '../../items/data/models/item_model.dart';
 import '../../items/data/repositories/item_repository.dart';
 import '../../review/presentation/review_detail_screen.dart';
+import '../../notifications/presentation/notifications_screen.dart';
 import 'item_detail_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
@@ -164,6 +165,8 @@ class _FeedContent extends StatelessWidget {
                               ],
                             ),
                           ),
+                          _NotificationBell(householdId: householdId),
+                          const SizedBox(width: 12),
                           _WeatherWidget(householdId: householdId),
                         ],
                       ),
@@ -1102,6 +1105,66 @@ class _EmptyState extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// --- Notification Bell ---
+class _NotificationBell extends StatelessWidget {
+  final String householdId;
+  const _NotificationBell({required this.householdId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('households')
+          .doc(householdId)
+          .collection('notifications')
+          .where('read', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.docs.length ?? 0;
+
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const NotificationsScreen(),
+            ),
+          ),
+          child: Stack(
+            children: [
+              Icon(
+                count > 0
+                    ? Icons.notifications_rounded
+                    : Icons.notifications_none_rounded,
+                color: count > 0 ? AppColors.primary : AppColors.textMuted,
+                size: 26,
+              ),
+              if (count > 0)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      color: AppColors.softCoral,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      count > 9 ? '9+' : '$count',
+                      style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
