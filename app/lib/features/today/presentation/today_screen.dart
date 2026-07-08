@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -16,9 +17,9 @@ import '../../../core/widgets/nabbo_widgets.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 import '../../items/data/models/item_model.dart';
-import '../../items/data/repositories/item_repository.dart';
 import '../../review/presentation/review_detail_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
+import '../../activity/presentation/activity_feed_view.dart';
 import 'item_detail_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
@@ -106,17 +107,271 @@ class FeedEntry {
       dateTime != null && (dateTime!.hour != 0 || dateTime!.minute != 0);
 }
 
-class _FeedContent extends StatelessWidget {
+class _FeedContent extends StatefulWidget {
   final String householdId;
   final String userName;
   final String lang;
   const _FeedContent({required this.householdId, required this.userName, required this.lang});
 
   @override
+  State<_FeedContent> createState() => _FeedContentState();
+}
+
+class _FeedContentState extends State<_FeedContent> {
+  int _selectedTab = 0; // 0 = Feed, 1 = Activity
+  int _unreadCount = 0;
+  DateTime? _lastViewedTimestamp;
+  StreamSubscription? _activityCountSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastViewed();
+  }
+
+  @override
+  void dispose() {
+    _activityCountSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadLastViewed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final millis = prefs.getInt('activity_last_viewed');
+    if (millis != null) {
+      _lastViewedTimestamp = DateTime.fromMillisecondsSinceEpoch(millis);
+    }
+    _startUnreadCounter();
+  }
+
+  void _startUnreadCounter() {
+    final db = FirebaseFirestore.instance;
+    final eventsRef = db
+        .collection('households')
+        .doc(widget.householdId)
+        .collection('activityEvents')
+        .orderBy('createdAt', descending: true)
+        .limit(100);
+
+    _activityCountSub = eventsRef.snapshots().listen((snapshot) {
+      if (!mounted) return;
+      final lastViewed = _lastViewedTimestamp ?? DateTime(2000);
+      int count = 0;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final ts = data['createdAt'] as Timestamp?;
+        if (ts != null && ts.toDate().isAfter(lastViewed)) {
+          count++;
+        }
+      }
+      if (mounted) {
+        setState(() => _unreadCount = count);
+      }
+    });
+  }
+
+  Future<void> _markActivityViewed() async {
+    final now = DateTime.now();
+    setState(() {
+      _lastViewedTimestamp = now;
+      _unreadCount = 0;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('activity_last_viewed', now.millisecondsSinceEpoch);
+  }
+
+  void _onTabChanged(int index) {
+    setState(() => _selectedTab = index);
+    if (index == 1) {
+      _markActivityViewed();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final db = FirebaseFirestore.instance;
-    final householdRef = db.collection('households').doc(householdId);
+    final householdRef = db.collection('households').doc(widget.householdId);
 
+    return Column(
+      children: [
+        // Header
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${_greeting()}, ${widget.userName}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: AppColors.textSecondary)),
+                          const SizedBox(height: 4),
+                          Text(AppStrings.get('your_family_feed', widget.lang),
+                              style: Theme.of(context).textTheme.headlineMedium),
+                        ],
+                      ),
+                    ),
+                    _NotificationBell(householdId: widget.householdId),
+                    const SizedBox(width: 12),
+                    _WeatherWidget(householdId: widget.householdId),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                // Tab toggle
+                _FeedActivityToggle(
+                  selectedIndex: _selectedTab,
+                  unreadCount: _unreadCount,
+                  onChanged: _onTabChanged,
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+            ),
+          ),
+        ),
+
+        // Body — IndexedStack preserves scroll positions
+        Expanded(
+          child: IndexedStack(
+            index: _selectedTab,
+            children: [
+              // Feed tab
+              _FeedList(
+                householdId: widget.householdId,
+                householdRef: householdRef,
+                lang: widget.lang,
+              ),
+              // Activity tab
+              ActivityFeedView(householdId: widget.householdId),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return AppStrings.get('good_morning', widget.lang);
+    if (hour < 17) return AppStrings.get('good_afternoon', widget.lang);
+    return AppStrings.get('good_evening', widget.lang);
+  }
+}
+
+/// Toggle pills for Feed / Activity
+class _FeedActivityToggle extends StatelessWidget {
+  final int selectedIndex;
+  final int unreadCount;
+  final ValueChanged<int> onChanged;
+
+  const _FeedActivityToggle({
+    required this.selectedIndex,
+    required this.unreadCount,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _TogglePill(
+          label: 'Feed',
+          isSelected: selectedIndex == 0,
+          onTap: () => onChanged(0),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _TogglePill(
+          label: 'Activity',
+          isSelected: selectedIndex == 1,
+          onTap: () => onChanged(1),
+          badgeCount: selectedIndex == 0 ? unreadCount : 0,
+        ),
+      ],
+    );
+  }
+}
+
+class _TogglePill extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final int badgeCount;
+
+  const _TogglePill({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.badgeCount = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.primary : AppColors.surfaceSoft,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
+          ),
+          if (badgeCount > 0)
+            Positioned(
+              right: -4,
+              top: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                ),
+                constraints: const BoxConstraints(minWidth: 18),
+                child: Text(
+                  badgeCount > 99 ? '99+' : '$badgeCount',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Extracted feed list (original feed content)
+class _FeedList extends StatelessWidget {
+  final String householdId;
+  final DocumentReference householdRef;
+  final String lang;
+  const _FeedList({required this.householdId, required this.householdRef, required this.lang});
+
+  @override
+  Widget build(BuildContext context) {
     // Load member info map (name → { color, photoUrl })
     return StreamBuilder<Map<String, _MemberInfo>>(
       stream: householdRef.collection('members').snapshots().map((snap) {
@@ -140,51 +395,12 @@ class _FeedContent extends StatelessWidget {
           builder: (context, snapshot) {
             final items = snapshot.data ?? [];
 
+            if (items.isEmpty) {
+              return const _EmptyState();
+            }
+
             return CustomScrollView(
               slivers: [
-                // Header
-                SliverToBoxAdapter(
-                  child: SafeArea(
-                    bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('${_greeting()}, $userName',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(color: AppColors.textSecondary)),
-                                const SizedBox(height: 4),
-                                Text(AppStrings.get('your_family_feed', lang),
-                                    style: Theme.of(context).textTheme.headlineMedium),
-                              ],
-                            ),
-                          ),
-                          _NotificationBell(householdId: householdId),
-                          const SizedBox(width: 12),
-                          _WeatherWidget(householdId: householdId),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            if (items.isEmpty)
-              const SliverFillRemaining(child: _EmptyState())
-            else
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 sliver: SliverList(
@@ -228,13 +444,6 @@ class _FeedContent extends StatelessWidget {
         );
       },
     );
-  }
-
-  String _greeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return AppStrings.get('good_morning', lang);
-    if (hour < 17) return AppStrings.get('good_afternoon', lang);
-    return AppStrings.get('good_evening', lang);
   }
 
   Widget _buildSwipeable(BuildContext context, FeedEntry entry, String householdId, Map<String, _MemberInfo> memberInfo) {
@@ -735,24 +944,6 @@ class _FeedContent extends StatelessWidget {
 
     return entries;
   }
-
-  (IconData, Color, Color) _typeVisuals(ItemType type) => switch (type) {
-        ItemType.event => (
-            Icons.event_rounded,
-            AppColors.primary,
-            AppColors.lavenderLight
-          ),
-        ItemType.task => (
-            Icons.check_circle_outline_rounded,
-            AppColors.warmYellow,
-            AppColors.yellowLight
-          ),
-        ItemType.deadline => (
-            Icons.schedule_rounded,
-            AppColors.softCoral,
-            AppColors.coralLight
-          ),
-      };
 
   IconData _inputIcon(String? method) => switch (method) {
         'freeText' => Icons.edit_note_rounded,

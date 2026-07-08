@@ -1,16 +1,25 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../activity/data/models/activity_event_model.dart';
+import '../../../activity/data/repositories/activity_repository.dart';
 import '../models/item_model.dart';
 
 final itemRepositoryProvider = Provider<ItemRepository>((ref) {
-  return ItemRepository(FirebaseFirestore.instance);
+  return ItemRepository(
+    FirebaseFirestore.instance,
+    ref.read(activityRepositoryProvider),
+  );
 });
 
 class ItemRepository {
   final FirebaseFirestore _firestore;
+  final ActivityRepository _activityRepo;
 
-  ItemRepository(this._firestore);
+  ItemRepository(this._firestore, this._activityRepo);
+
+  String get _currentUid => FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
 
   CollectionReference _itemsRef(String householdId) =>
       _firestore.collection('households').doc(householdId).collection('items');
@@ -92,6 +101,23 @@ class ItemRepository {
       'status': 'confirmed',
       'updatedAt': Timestamp.now(),
     });
+    // Record activity event
+    final item = await getItem(householdId, itemId);
+    if (item != null) {
+      final actorName = await _activityRepo.resolveActorName(householdId);
+      _activityRepo.recordEvent(householdId, ActivityEventModel(
+        id: '',
+        householdId: householdId,
+        activityType: ActivityType.approval,
+        actorId: _currentUid,
+        actorName: actorName,
+        title: item.title,
+        childId: item.childId,
+        childName: item.childName,
+        relatedItemId: itemId,
+        createdAt: DateTime.now(),
+      ));
+    }
   }
 
   /// Approve a change proposal (action: update) — apply changes to target item, delete proposal
@@ -127,18 +153,50 @@ class ItemRepository {
 
   /// Mark an item as completed
   Future<void> complete(String householdId, String itemId) async {
+    final item = await getItem(householdId, itemId);
     await _itemsRef(householdId).doc(itemId).update({
       'status': 'completed',
       'updatedAt': Timestamp.now(),
     });
+    if (item != null) {
+      final actorName = await _activityRepo.resolveActorName(householdId);
+      _activityRepo.recordEvent(householdId, ActivityEventModel(
+        id: '',
+        householdId: householdId,
+        activityType: ActivityType.completion,
+        actorId: _currentUid,
+        actorName: actorName,
+        title: item.title,
+        childId: item.childId,
+        childName: item.childName,
+        relatedItemId: itemId,
+        createdAt: DateTime.now(),
+      ));
+    }
   }
 
   /// Cancel an item
   Future<void> cancel(String householdId, String itemId) async {
+    final item = await getItem(householdId, itemId);
     await _itemsRef(householdId).doc(itemId).update({
       'status': 'cancelled',
       'updatedAt': Timestamp.now(),
     });
+    if (item != null) {
+      final actorName = await _activityRepo.resolveActorName(householdId);
+      _activityRepo.recordEvent(householdId, ActivityEventModel(
+        id: '',
+        householdId: householdId,
+        activityType: ActivityType.cancellation,
+        actorId: _currentUid,
+        actorName: actorName,
+        title: item.title,
+        childId: item.childId,
+        childName: item.childName,
+        relatedItemId: itemId,
+        createdAt: DateTime.now(),
+      ));
+    }
   }
 
   /// Update any fields on an item (edit flow)
@@ -150,7 +208,23 @@ class ItemRepository {
 
   /// Delete an item permanently
   Future<void> deleteItem(String householdId, String itemId) async {
+    final item = await getItem(householdId, itemId);
     await _itemsRef(householdId).doc(itemId).delete();
+    if (item != null) {
+      final actorName = await _activityRepo.resolveActorName(householdId);
+      _activityRepo.recordEvent(householdId, ActivityEventModel(
+        id: '',
+        householdId: householdId,
+        activityType: ActivityType.cancellation,
+        actorId: _currentUid,
+        actorName: actorName,
+        title: item.title,
+        childId: item.childId,
+        childName: item.childName,
+        relatedItemId: itemId,
+        createdAt: DateTime.now(),
+      ));
+    }
   }
 
   /// Cancel a single occurrence of a recurring item
