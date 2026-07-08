@@ -57,11 +57,12 @@ Pending review items appear at the top with clear "Review" badges so the parent 
 
 ### Content Sections (top to bottom)
 
-1. **Analyzing** — Source messages being processed by AI (spinner + "Analyzing...")
-2. **Needs Review** — Items with `status: pendingReview` (yellow badge)
-3. **Today** — Confirmed items for today's date
-4. **Tomorrow** — Confirmed items for tomorrow
-5. **Upcoming** — Confirmed items for the next 4 weeks (grouped by date)
+1. **Morning Brief Card** — Premium daily briefing card (purple gradient) summarizing today's events, deadlines, tasks, and items needing review. Dismissible per session (reappears next app launch). Shows time-of-day icon + greeting, bullet summary, and "no owner" warnings for unassigned items due today/tomorrow. If nothing is scheduled, shows "Nothing scheduled today. Enjoy! ✨"
+2. **Analyzing** — Source messages being processed by AI (spinner + "Analyzing...")
+3. **Needs Review** — Items with `status: pendingReview` (yellow badge)
+4. **Today** — Confirmed items for today's date
+5. **Tomorrow** — Confirmed items for tomorrow
+6. **Upcoming** — Confirmed items for the next 4 weeks (grouped by date)
 
 ### Date Headers
 

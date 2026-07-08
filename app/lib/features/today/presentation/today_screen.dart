@@ -20,6 +20,7 @@ import '../../items/data/models/item_model.dart';
 import '../../review/presentation/review_detail_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../activity/presentation/activity_feed_view.dart';
+import 'widgets/morning_brief_card.dart';
 import 'item_detail_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
@@ -424,6 +425,13 @@ class _FeedListState extends State<_FeedList> {
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.lg),
+                  child: MorningBriefCard(householdId: householdId),
+                ),
+              ),
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 sliver: SliverList(
