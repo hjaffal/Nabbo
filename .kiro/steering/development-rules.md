@@ -15,6 +15,9 @@ The following documents are the source of truth for Nabbo's product and technica
 - `docs/10-technical-architecture.md` — Technical Architecture
 - `docs/11-layouts-specs.md` — Layout Specifications (UI component designs)
 - `docs/13-household-intelligence.md` — Household Intelligence Layer (pattern learning, child inference)
+- `docs/14-item-categories-icons.md` — Item Categories & Icons (AI-chosen, visual mapping)
+- `docs/15-feature-list.md` — Feature List (implemented + remaining)
+- `docs/16-auto-approval.md` — Auto-Approval Design (confidence-based skip review)
 
 ## Rules
 
