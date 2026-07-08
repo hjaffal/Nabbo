@@ -166,13 +166,7 @@
 | 7 | Item category editable by user | Small | Add category text field to Edit Item screen |
 | 8 | Auto-approval ✨ indicator on feed cards | Small | Show subtle indicator for first 24h |
 
-### Bug Fixes
 
-| # | Bug | Impact | Notes |
-|---|-----|--------|-------|
-| 1 | Weather not showing on iOS | Low | GPS permission flow may not trigger |
-| 2 | Some school emails get noAction | Medium | Prompt tuning needed |
-| 3 | Places autocomplete API key restrictions | Medium | Needs key set to "None" or bundle IDs |
 
 ### Future (v2)
 
