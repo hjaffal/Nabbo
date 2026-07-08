@@ -152,35 +152,107 @@ Group by: source message, event, child, time window.
 
 ## Implementation Architecture
 
-### Current (v1)
+### In-App Notification Center
+
+The app has a **Notifications tab** (bell icon with badge) accessible from the Feed header. This is NOT a separate bottom nav tab — it's a screen opened from the Feed.
 
 ```
-Cloud Functions → FCM → Device
+Feed Header:
+┌────────────────────────────────────────────────────┐
+│  Good evening, Hassan            🔔 (3)   🌤 22°  │
+│  Your family feed                                  │
+└────────────────────────────────────────────────────┘
 ```
 
-Two triggers:
-1. **`extractSourceMessage`** — sends notification after items are created (already implemented)
-2. **`checkDeadlines`** — scheduled hourly, checks for deadlines in next 24h (already implemented)
+The bell icon shows an unread badge count. Tapping opens the Notifications screen.
 
-### Needed additions
+### Notifications Collection
 
-3. **Event reminders** — scheduled function checks for confirmed events in next 2 hours
-4. **Daily brief** — scheduled function at 7:30 AM (user timezone), compiles summary
-5. **Change notifications** — sent immediately when AI detects `action: update/cancel`
+```
+households/{householdId}/notifications/{id}
+```
 
-### Notification Payload
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Auto-generated |
+| `type` | string | `review_needed`, `deadline`, `event_reminder`, `change_detected`, `daily_brief` |
+| `title` | string | Short notification title |
+| `body` | string | Notification body text |
+| `itemId` | string? | Related item ID (for deep linking) |
+| `sourceMessageId` | string? | Related source message ID |
+| `priority` | string | `high`, `medium`, `low` |
+| `read` | boolean | Whether user has seen it |
+| `actedOn` | boolean | Whether user took action (approved, completed, etc.) |
+| `createdAt` | Timestamp | When notification was created |
+| `expiresAt` | Timestamp? | Auto-dismiss after this time (optional) |
+
+### Notifications Screen
+
+Shows a chronological list of notifications (newest first):
+
+```
+┌────────────────────────────────────────────────────┐
+│  ← Notifications                     Mark all read │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  ● 3 items to review                    2 min ago  │
+│    From school email about summer school           │
+│                                                    │
+│  ● Basketball moved to 18:30           30 min ago  │
+│    Adam's training time changed                    │
+│                                                    │
+│  ○ Permission form due tomorrow         2 hrs ago  │
+│    Already reviewed                                │
+│                                                    │
+│  ○ Dentist tomorrow at 9:00             5 hrs ago  │
+│    Event reminder                                  │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+- **● Unread** — bold, with dot indicator
+- **○ Read** — normal weight, no dot
+- Tap → opens the relevant item/review screen
+- Swipe to dismiss individual notifications
+- "Mark all read" button in header
+
+### Badge Count
+
+- Badge = count of unread notifications where `read == false`
+- Shown on the bell icon in Feed header
+- Updated in real-time via Firestore stream
+- Resets when user opens Notifications screen (marks visible ones as read)
+
+### Notification Flow
+
+```
+1. Trigger occurs (extraction complete, deadline approaching, etc.)
+2. Cloud Function:
+   a. Writes notification document to notifications/ subcollection
+   b. Sends FCM push notification to device
+3. App:
+   a. Push notification shows on device (if app is in background)
+   b. In-app badge updates via Firestore stream
+   c. Tapping push notification → deep links to item
+   d. Tapping bell icon → opens Notifications screen
+```
+
+### Push Notification (FCM)
+
+Push notifications are sent **in addition to** the in-app notification. They serve as the external trigger when the app is closed.
 
 ```javascript
 {
   token: userFcmToken,
   notification: {
     title: "Basketball moved to 18:30",
-    body: "Adam's training changed from 17:00. Tap to review."
+    body: "Adam's training time changed. Tap to review."
   },
   data: {
-    type: "review_needed | deadline | event_reminder | daily_brief | change_detected",
+    type: "change_detected",
     householdId: "...",
-    itemId: "..." // for deep linking
+    itemId: "...",
+    notificationId: "..." // links to in-app notification
   },
   apns: {
     payload: {
@@ -188,14 +260,6 @@ Two triggers:
     }
   }
 }
-```
-
-### FCM Token Storage
-
-```
-userTokens/{userId}/
-  fcmToken: "device-token"
-  updatedAt: Timestamp
 ```
 
 ---
@@ -256,25 +320,34 @@ Stored on household document:
 
 ## Implementation Phases
 
-### Phase 1 (done)
-- ✅ Notification after extraction (items to review)
-- ✅ Hourly deadline check (24h window)
+### Phase 1: In-App Notification Center
+- Create `notifications/` subcollection in Firestore
+- Bell icon with badge in Feed header
+- Notifications screen (list of notifications, mark as read, tap to navigate)
+- Badge count via Firestore stream
 
-### Phase 2 (next)
-- Event reminders (2 hours before confirmed events)
-- Change notifications (immediate when `action: update/cancel`)
-- Better grouping (count of items, not one per item)
+### Phase 2: Cloud Function Triggers
+- After extraction: write notification to `notifications/` + send FCM push
+- Hourly deadline check: write notification for deadlines due in 24h
+- Change detection: write notification when `action: update/cancel`
+- Event reminders: check for confirmed events in next 2 hours
 
-### Phase 3 (later)
-- Daily brief (morning summary)
-- User notification preferences (settings screen already exists)
-- Deep linking to specific items
-- Badge count management
+### Phase 3: Push Notifications (FCM)
+- Reliable FCM token registration on iOS/Android
+- Push notification sent alongside in-app notification
+- Deep linking: tapping push opens specific item/review screen
+- Badge count on app icon
 
-### Phase 4 (future)
+### Phase 4: User Preferences
+- Notification settings screen (toggle per type)
+- Quiet hours configuration
+- Daily brief opt-in (morning summary at configured time)
+
+### Phase 5: Smart Features (future)
+- Grouping (one notification per source, not per item)
+- Suppression (auto-dismiss after user acts)
 - Per-owner notifications (when multi-user)
-- Smart timing (learn when user acts, send at that time)
-- Escalation for ignored deadlines
+- Smart timing (learn user patterns)
 
 ---
 

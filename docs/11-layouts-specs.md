@@ -289,7 +289,7 @@ Form screen for editing any item at any lifecycle stage.
 
 ```
 ┌────────────────────────────────────────────────────┐
-│  Good morning, Hassan                    🌤 22°    │
+│  Good morning, Hassan             🔔(3)  🌤 22°   │
 │  Your family feed                                  │
 ├────────────────────────────────────────────────────┤
 │                                                    │
@@ -395,6 +395,59 @@ Form screen for editing any item at any lifecycle stage.
 | completed | Original message + extracted items with actions |
 | failed | Original message + error + "Try again" button |
 | noAction | Original message + "No clear action found" |
+
+---
+
+## Notifications Screen
+
+Opened from bell icon in Feed header.
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│  ← Notifications                     Mark all read │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  ● 3 items to review                    2 min ago  │
+│    From school email about summer school           │
+│                                                    │
+│  ● Basketball moved to 18:30           30 min ago  │
+│    Adam's training time changed                    │
+│                                                    │
+│  ○ Permission form due tomorrow         2 hrs ago  │
+│    Already reviewed                                │
+│                                                    │
+│  ○ Dentist tomorrow at 9:00             5 hrs ago  │
+│    Event reminder                                  │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+### Elements
+
+| Element | Description |
+|---------|------------|
+| **Unread dot (●)** | Blue dot for unread notifications |
+| **Title** | Notification title (bold if unread) |
+| **Body** | Secondary text with context |
+| **Time** | Relative time ("2 min ago", "5 hrs ago") |
+| **Mark all read** | Button in header, marks all visible as read |
+
+### Behavior
+
+- Tap notification → navigates to related item/review
+- Swipe left → dismiss notification
+- Opening the screen marks visible notifications as read (auto)
+- Real-time updates via Firestore stream
+
+### Empty State
+
+```
+        🔔
+  No notifications yet.
+  We'll let you know when something needs attention.
+```
 
 ---
 

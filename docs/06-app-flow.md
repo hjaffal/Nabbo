@@ -158,7 +158,8 @@ The Feed is the main screen. It shows **all items** in chronological order, grou
 
 - Greeting: "Good evening, [user name]" (time-based + user's display name)
 - Title: "Your family feed"
-- **Weather widget** (top-right): emoji + temperature from OpenWeatherMap (by household city or GPS fallback)
+- **Notification bell** (top-right, before weather): bell icon with badge count of unread notifications. Tap opens Notifications screen.
+- **Weather widget** (top-right): emoji + temperature from OpenWeatherMap (by GPS)
 - Items grouped by day: "Needs Review", "Today", "Tomorrow", "Wed, 9 Jul", etc.
 - Each card shows: icon, title, child chip (photo or colored initial), owner chip, location, time, status badge
 - Tapping a pending item → opens **Review Detail** screen
