@@ -53,6 +53,7 @@ Structured details from the item's fields:
 - `childName` — who it's about
 - `ownerName` — who's responsible
 - `type` — event / task / deadline
+- `notes` — additional context: links, instructions, contacts, form details, what to bring
 - `extractedFields` — additional AI-detected key-value pairs
 
 Each field shows confidence from the `confidence` map.

@@ -255,21 +255,25 @@ Today is ${dayName}, ${today}.
 ${membersStr}${contextStr}
 
 RULES:
-- Extract actions, not summaries. Tell the parent what needs to happen.
+- You are helping a busy parent manage family logistics. Extract ANYTHING that requires parent attention or action.
 - Types allowed: "event" (scheduled activity), "task" (action to do), "deadline" (hard due date)
-- CHANGE DETECTION: Compare the message against the existing household items listed above. If the message updates or cancels an existing item, use action "update" or "cancel" with targetItemTitle set to the existing item's title. If it's a new item, use action "create".
+- BE GENEROUS: If there is ANY mention of a date, deadline, enrollment, form, payment, meeting, or request for parent action — extract it. When in doubt, create an item with low confidence rather than returning nothing.
+- DEADLINES: Any "by [date]", "before [date]", "due [date]", "deadline", registration closing date, enrollment deadline = create a deadline. This is critical — parents must not miss deadlines.
+- OPPORTUNITIES: Enrollment windows, sign-up options, optional activities with deadlines = create a deadline for the decision date AND an event for the activity itself.
+- SOFT ACTIONS: "please discuss", "take some time to", "we recommend", "if you wish to", "please complete" = these ARE tasks for the parent. Extract them.
+- NOTES FIELD: Capture ALL useful context in the notes field — links, URLs, form names, email addresses to contact, specific instructions, conditions, options to choose from, what subjects are available, etc. The parent should have everything they need in the item without going back to the original message.
+- CHANGE DETECTION: Compare the message against the existing household items listed above. If the message updates or cancels an existing item, use action "update" or "cancel" with targetItemTitle. If it's a new item, use action "create".
 - Titles must be short, action-focused, and natural.
-- Match the affected child to a family member name if possible (set childName).
+- Match the affected child to a family member name if possible (set childName). If the message is about all children, create one item per child or set childName to null.
 - Match the responsible adult to a family member if mentioned (set ownerName). Words like "I", "me", "remind me" mean the person who sent this message. "Dad", "Mum" map to parent roles. NEVER assign ownerName to a child.
 - Include date AND time when mentioned. "Friday at 18:30" means the date is Friday AND the time is 18:30.
-- If an event has an end time (e.g., "2pm to 5pm"), include endDate.
+- If an event has an end time (e.g., "2pm to 5pm") or date range (Aug 31 to Sep 11), include endDate.
 - If recurring, include recurrence object with frequency, dayOfWeek, startDate, and endDate if mentioned.
 - For recurrence endDate: "until end of year" = "2026-12-31", "until summer" = "2026-08-31", "until December" = "2026-12-31". Always convert relative end dates to YYYY-MM-DD format.
-- For updates: include a "changes" object with only the fields that changed (e.g., {"date": "thursday 18:00", "location": "Main Hall"}).
+- For updates: include a "changes" object with only the fields that changed.
 - Mark uncertain fields in uncertainFields array.
-- Do NOT guess dates/times — mark as uncertain if unclear.
 - A single message can produce multiple items. Split them.
-- If nothing actionable is found, return an empty array [].
+- ONLY return empty array [] if the message is truly personal/social with zero family logistics relevance (e.g., "happy birthday!", "see you at the party").
 
 Return a JSON array. Each item:
 {
@@ -278,8 +282,8 @@ Return a JSON array. Each item:
   "title": "Short action-focused title (use existing item's title for update/cancel)",
   "targetItemTitle": "Title of existing item being changed (for update/cancel only, null for create)",
   "changes": { "fieldName": "new value" } (for update only, omit for create/cancel),
-  "summary": "What changed or explanation, or null",
-  "notes": "Any additional information from the source that does not fit into other fields (e.g., what to bring, special instructions, contact info, payment details). Capture everything useful here.",
+  "summary": "Brief explanation of what this is about",
+  "notes": "ALL additional useful information: links, URLs, form names, email addresses, instructions, conditions, options, subjects available, contact details, what to bring, how to submit. The parent should have everything they need here.",
   "childName": "Name of affected child or null",
   "ownerName": "Name of responsible adult or null",
   "date": "Date+time string (ISO like 2026-07-15T16:30:00, or relative like 'tomorrow at 4pm', 'friday 18:30', 'next tuesday') or null",

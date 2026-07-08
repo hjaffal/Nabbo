@@ -201,6 +201,7 @@ Full screen opened when tapping a confirmed/completed/cancelled item.
 - Null fields show as "— not set"
 - Dates formatted as DD/MM/YYYY at HH:MM
 - Recurrence shown as "weekly on tuesday" (human-readable)
+- `notes` field shown below other fields (full text, may contain links/URLs)
 - `extractedFields` map entries shown as additional key: value rows
 
 ---

@@ -68,6 +68,7 @@ An Item is **everything** — from the moment AI extracts it (pending review) th
 | `status` | enum | Lifecycle state |
 | `title` | string | Short action-focused title |
 | `summary` | string? | Longer operational summary from AI |
+| `notes` | string? | Additional context: links, instructions, contacts, form names, details that don't fit other fields |
 | `childId` | string? | ID of affected family member (child) |
 | `childName` | string? | Name of affected child |
 | `ownerId` | string? | ID of responsible parent/adult |

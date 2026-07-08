@@ -70,7 +70,7 @@ The app currently has:
 - **Review tab** — shows items with `status: pendingReview` with approve/edit actions
 - **Settings tab** — household (name, timezone, language, location via Places), family members (with color + photo), notifications, account
 - **Animated expandable FAB** with text/voice/image capture
-- **AI extraction** via Gemini 2.5 Flash Cloud Function (text + multimodal image support)
+- **AI extraction** via Gemini 2.5 Flash Cloud Function (text + multimodal image). Generous extraction: deadlines, soft actions, opportunities, school emails all create items. Notes field captures links/contacts/instructions.
 - **Change detection** — AI detects updates/cancellations of existing items (action: create/update/cancel)
 - **Recurrence** — items expand client-side, single occurrence cancellation via exceptions array
 - **Member colors** — random on create, picker in edit, used in Feed child chips (photo fallback to color initial)

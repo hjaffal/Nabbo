@@ -324,6 +324,7 @@ Every extracted item is written to Firestore as:
   "action": "create | update | cancel",
   "title": "Action-focused title",
   "summary": "Longer explanation (optional)",
+  "notes": "Additional context: links, URLs, instructions, contacts, form details (optional)",
   "childId": "matched member ID or null",
   "childName": "matched member name or null",
   "ownerId": "matched adult ID or null",
@@ -367,16 +368,20 @@ The prompt MUST include:
 
 ### Extraction Rules (in prompt)
 
-- Extract **actions**, not summaries
+- **Be generous:** Extract ANYTHING that requires parent attention or action. When in doubt, create an item with low confidence rather than returning nothing.
 - Types allowed: `event` (scheduled activity), `task` (action to do), `deadline` (hard due date)
+- **Deadlines are critical:** Any "by [date]", "before [date]", registration closing, enrollment deadline = always create a deadline. Parents must not miss these.
+- **Opportunities count:** Enrollment windows, sign-up options, optional activities with deadlines = create items. A school email offering summer school with a July 15 deadline = deadline + event.
+- **Soft actions count:** "please discuss", "if you wish to", "we recommend", "please complete" = these ARE tasks for the parent. Extract them.
+- **Notes field:** Capture ALL useful context — links, URLs, form names, email addresses, instructions, conditions, options, subjects, what to bring. The parent should have everything they need without going back to the original message.
 - **Detect changes:** If the message updates or cancels something that matches an existing item, use `action: "update"` or `action: "cancel"` with `targetItemTitle`. If it's new, use `action: "create"`.
 - Match affected child to family member if possible
 - Match owner/responsible person to adult family members if mentioned
 - If recurring, include recurrence object with `frequency`, `dayOfWeek`, `startDate`, `endDate`
 - Mark uncertain fields explicitly
-- Do NOT guess dates/times — mark as uncertain if unclear
-- Extract end times when mentioned (store as `endDate`)
-- Keep titles action-focused and natural (no artificial prefixes)
+- Extract end times/dates when mentioned (store as `endDate`)
+- Keep titles action-focused and natural
+- Only return empty `[]` for truly non-family content (social messages, greetings, spam)
 
 ### Expected AI Output Schema
 
@@ -687,6 +692,8 @@ If Nabbo cannot answer one, it shows the gap clearly.
 | "Dad needs to sign the permission slip by Friday" | 1 task (create): owner: Dad, date: Friday |
 | "Basketball cancelled this week" | 1 event (cancel): cancels this week's basketball |
 | "Football moved from 17:30 to 18:00" | 1 event (update): changes time on football |
+| School email with summer school enrollment by July 15 | 1 deadline (enroll by July 15) + 1 event (summer school Aug 31-Sep 11), notes: form links, subjects, contact email |
+| Teacher email "please discuss this incident with your child" | 1 task: "Discuss incident with [child]" |
 | "Nothing special today" | 0 items (noAction) |
 
 ### Must NOT Break
@@ -701,15 +708,18 @@ If Nabbo cannot answer one, it shows the gap clearly.
 
 ---
 
-## Known Defects (to fix)
+## Fixed (previously known defects)
 
-1. **Time not preserved:** `parseDate("next tuesday at 16:00")` → midnight instead of 16:00
-2. **endDate never set:** Events with duration always get `endDate: null`
-3. **Owner never extracted:** Prompt doesn't ask for owner, function doesn't match
-4. **extractedFields unstructured:** No defined field vocabulary in prompt
-5. **Recurrence endDate missing:** Can't store "until end of term"
-6. **Fragile fence stripping:** Edge cases in JSON cleanup can fail
-7. **No today's date in prompt:** Relative dates lack anchor for accurate resolution
+All previously documented defects have been resolved:
+- ✅ Time preserved in parseDate (handles "next tuesday at 16:00" → Tuesday 16:00)
+- ✅ endDate extracted (events with duration, date ranges)
+- ✅ Owner extracted (prompt asks for ownerName, function matches adults)
+- ✅ Recurrence endDate (prompt converts "until end of year" → YYYY-MM-DD)
+- ✅ Robust fence stripping (handles all markdown fence formats)
+- ✅ Today's date in prompt (relative dates resolved accurately)
+- ✅ Notes field (captures links, contacts, instructions, extra context)
+- ✅ Generous extraction (soft actions, opportunities, school emails all create items)
+- ✅ Multimodal (images processed via Gemini inlineData)
 
 ---
 
