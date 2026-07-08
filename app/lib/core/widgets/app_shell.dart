@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/capture/presentation/capture_sheet.dart';
 import '../../features/capture/presentation/image_capture_sheet.dart';
 import '../../features/capture/presentation/share_handler.dart';
+import '../l10n/strings.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
@@ -95,7 +96,7 @@ class _AppShellState extends ConsumerState<AppShell>
                 animation: _fabController,
                 index: 1,
                 icon: Icons.image_outlined,
-                label: 'Photo',
+                label: AppStrings.get('photo'),
                 onTap: () {
                   _closeFab();
                   showImageCaptureSheet(context);
@@ -110,7 +111,7 @@ class _AppShellState extends ConsumerState<AppShell>
                 animation: _fabController,
                 index: 0,
                 icon: Icons.edit_note_rounded,
-                label: 'Text',
+                label: AppStrings.get('text'),
                 onTap: () {
                   _closeFab();
                   showCaptureSheet(context);
@@ -142,7 +143,7 @@ class _AppShellState extends ConsumerState<AppShell>
                 _NavItem(
                   icon: Icons.dynamic_feed_outlined,
                   selectedIcon: Icons.dynamic_feed,
-                  label: 'Feed',
+                  label: AppStrings.get('feed'),
                   isSelected: widget.navigationShell.currentIndex == 0,
                   onTap: () {
                     _closeFab();
@@ -179,7 +180,7 @@ class _AppShellState extends ConsumerState<AppShell>
                 _NavItem(
                   icon: Icons.settings_outlined,
                   selectedIcon: Icons.settings,
-                  label: 'Settings',
+                  label: AppStrings.get('settings'),
                   isSelected: widget.navigationShell.currentIndex == 2,
                   onTap: () {
                     _closeFab();

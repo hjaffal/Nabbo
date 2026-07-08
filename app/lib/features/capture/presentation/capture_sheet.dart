@@ -1,3 +1,4 @@
+import '../../../core/l10n/strings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -179,14 +180,14 @@ class _SuccessState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Captured!',
+            AppStrings.get('captured'),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Nabbo will process this shortly.',
+            AppStrings.get('nabbo_will_process'),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),

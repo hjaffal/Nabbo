@@ -46,6 +46,7 @@ class TodayScreen extends ConsumerWidget {
         data: (household) {
           if (household == null) return const _EmptyState();
           final displayName = FirebaseAuth.instance.currentUser?.displayName ?? household.name;
+          AppStrings.currentLang = household.language;
           return _FeedContent(householdId: household.id, userName: displayName, lang: household.language);
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -1064,13 +1065,13 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (entry.feedStatus) {
-      'analyzing' => ('Analyzing', AppColors.softBlue),
-      'pendingReview' => ('Review', AppColors.warmYellow),
-      'confirmed' => ('Active', AppColors.softGreen),
-      'cancelled' => ('Cancelled', AppColors.softCoral),
-      'completed' => ('Done', AppColors.softGreen),
-      'failed' => ('Failed', AppColors.softCoral),
-      'noAction' => ('No action', AppColors.textMuted),
+      'analyzing' => (AppStrings.get('analyzing'), AppColors.softBlue),
+      'pendingReview' => (AppStrings.get('review'), AppColors.warmYellow),
+      'confirmed' => (AppStrings.get('active'), AppColors.softGreen),
+      'cancelled' => (AppStrings.get('cancelled'), AppColors.softCoral),
+      'completed' => (AppStrings.get('done'), AppColors.softGreen),
+      'failed' => (AppStrings.get('failed'), AppColors.softCoral),
+      'noAction' => (AppStrings.get('no_action'), AppColors.textMuted),
       _ => ('', AppColors.textMuted),
     };
 
@@ -1108,11 +1109,11 @@ class _EmptyState extends StatelessWidget {
                 child: const Icon(Icons.check_rounded,
                     size: 40, color: AppColors.softGreen)),
             const SizedBox(height: 20),
-            Text('Nothing in your feed yet.',
+            Text(AppStrings.get('nothing_in_feed'),
                 style: Theme.of(context).textTheme.titleMedium,
                 textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text('Capture something to get started.',
+            Text(AppStrings.get('capture_to_start'),
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium

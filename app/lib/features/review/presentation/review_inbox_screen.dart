@@ -1,3 +1,4 @@
+import '../../../core/l10n/strings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -278,12 +279,12 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'All caught up!',
+              AppStrings.get('all_caught_up'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Nothing to review right now.\nCapture something to get started.',
+              AppStrings.get('nothing_to_review'),
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
