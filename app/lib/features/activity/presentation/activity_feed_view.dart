@@ -124,8 +124,15 @@ class _ActivityFeedViewState extends ConsumerState<ActivityFeedView> {
         // Group events by date
         final grouped = _groupByDate(allEvents);
 
-        return ListView.builder(
+        return RefreshIndicator(
+          onRefresh: () async {
+            _additionalEvents.clear();
+            _hasMore = true;
+            setState(() {});
+          },
+          child: ListView.builder(
           controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.xl,
             vertical: AppSpacing.sm,
@@ -174,6 +181,7 @@ class _ActivityFeedViewState extends ConsumerState<ActivityFeedView> {
               ),
             );
           },
+        ),
         );
       },
     );

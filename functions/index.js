@@ -364,11 +364,13 @@ RULES:
 - Include date AND time when mentioned. "Friday at 18:30" means the date is Friday AND the time is 18:30.
 - If an event has an end time (e.g., "2pm to 5pm") or date range (Aug 31 to Sep 11), include endDate.
 - If recurring, include recurrence object with frequency, dayOfWeek, startDate, and endDate if mentioned.
-- For recurrence endDate: "until end of year" = "2026-12-31", "until summer" = "2026-08-31", "until December" = "2026-12-31". Always convert relative end dates to YYYY-MM-DD format.
+- For multi-day recurrence (e.g., "every Monday, Tuesday, and Wednesday"), create ONE SEPARATE ITEM PER DAY with its own recurrence object. "Drive kids to school Monday, Tuesday, Wednesday" = 3 items, each with frequency "weekly" and their own dayOfWeek.
+- For recurrence endDate: "until end of year" = "2026-12-31", "until summer" = "2026-08-31", "until December" = "2026-12-31", "till 15 july" = "2026-07-15". Always convert relative end dates to YYYY-MM-DD format.
 - For updates: include a "changes" object with only the fields that changed.
 - Mark uncertain fields in uncertainFields array.
 - A single message can produce multiple items. Split them.
 - CRITICAL: School emails, newsletters, and forwards from institutions ALWAYS have actions (enrollment deadlines, events, forms to fill, things to prepare). NEVER return empty for these. Look for dates, deadlines, enrollment periods, forms, payments, or things parents need to decide.
+- CRITICAL: Simple text notes from the parent like "Drive kids to school every Monday" ARE valid items. Short messages that describe a recurring event, task, or deadline MUST be extracted. The parent explicitly wrote this because they want Nabbo to remember it.
 - ONLY return empty array [] if the message is truly personal/social with zero logistics relevance (e.g., "happy birthday!", "thanks for the gift").
 
 Return a JSON array. Each item:

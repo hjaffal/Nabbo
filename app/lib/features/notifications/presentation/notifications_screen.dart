@@ -38,9 +38,16 @@ class NotificationsScreen extends ConsumerWidget {
   }
 }
 
-class _NotificationsContent extends StatelessWidget {
+class _NotificationsContent extends StatefulWidget {
   final String householdId;
   const _NotificationsContent({required this.householdId});
+
+  @override
+  State<_NotificationsContent> createState() => _NotificationsContentState();
+}
+
+class _NotificationsContentState extends State<_NotificationsContent> {
+  String get householdId => widget.householdId;
 
   @override
   Widget build(BuildContext context) {
@@ -92,20 +99,26 @@ class _NotificationsContent extends StatelessWidget {
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: docs.length,
-            separatorBuilder: (_, __) =>
-                Divider(height: 1, color: AppColors.surfaceSoft),
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              return _NotificationTile(
-                doc: doc,
-                data: data,
-                householdId: householdId,
-              );
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {});
             },
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: docs.length,
+              separatorBuilder: (_, __) =>
+                  Divider(height: 1, color: AppColors.surfaceSoft),
+              itemBuilder: (context, index) {
+                final doc = docs[index];
+                final data = doc.data() as Map<String, dynamic>;
+                return _NotificationTile(
+                  doc: doc,
+                  data: data,
+                  householdId: householdId,
+                );
+              },
+            ),
           );
         },
       ),

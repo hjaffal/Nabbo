@@ -364,11 +364,29 @@ class _TogglePill extends StatelessWidget {
 }
 
 /// Extracted feed list (original feed content)
-class _FeedList extends StatelessWidget {
+class _FeedList extends StatefulWidget {
   final String householdId;
   final DocumentReference householdRef;
   final String lang;
   const _FeedList({required this.householdId, required this.householdRef, required this.lang});
+
+  @override
+  State<_FeedList> createState() => _FeedListState();
+}
+
+class _FeedListState extends State<_FeedList> {
+  // Key to force stream rebuild on refresh
+  Key _streamKey = UniqueKey();
+
+  Future<void> _onRefresh() async {
+    setState(() => _streamKey = UniqueKey());
+    // Small delay to let the stream reconnect
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  String get householdId => widget.householdId;
+  DocumentReference get householdRef => widget.householdRef;
+  String get lang => widget.lang;
 
   @override
   Widget build(BuildContext context) {
@@ -391,6 +409,7 @@ class _FeedList extends StatelessWidget {
         final memberInfo = membersSnap.data ?? {};
 
         return StreamBuilder<List<FeedEntry>>(
+          key: _streamKey,
           stream: _buildFeedStream(householdRef),
           builder: (context, snapshot) {
             final items = snapshot.data ?? [];
@@ -399,8 +418,12 @@ class _FeedList extends StatelessWidget {
               return const _EmptyState();
             }
 
-            return CustomScrollView(
-              slivers: [
+            return RefreshIndicator(
+              onRefresh: _onRefresh,
+              color: AppColors.primary,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 sliver: SliverList(
@@ -439,7 +462,8 @@ class _FeedList extends StatelessWidget {
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
-        );
+        ),
+            );
           },
         );
       },
@@ -537,8 +561,33 @@ class _FeedList extends StatelessWidget {
           }
           return false; // Don't dismiss — we handle state changes manually
         } else {
-          // Swipe left → mark complete
-          return true;
+          // Swipe left → mark complete + hide
+          if (entry.isRecurring && entry.occurrenceDate != null) {
+            final dateStr = '${entry.occurrenceDate!.year}-${entry.occurrenceDate!.month.toString().padLeft(2, '0')}-${entry.occurrenceDate!.day.toString().padLeft(2, '0')}';
+            FirebaseFirestore.instance.collection('households').doc(householdId).collection('items').doc(itemId).update({
+              'exceptions': FieldValue.arrayUnion([{'date': dateStr, 'status': 'hidden'}]),
+              'updatedAt': Timestamp.now(),
+            });
+          } else {
+            _setStatus(householdId, itemId, 'hidden', entry.feedStatus);
+          }
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('${entry.title} done'),
+              action: SnackBarAction(label: 'Undo', onPressed: () {
+                if (entry.isRecurring && entry.occurrenceDate != null) {
+                  final dateStr = '${entry.occurrenceDate!.year}-${entry.occurrenceDate!.month.toString().padLeft(2, '0')}-${entry.occurrenceDate!.day.toString().padLeft(2, '0')}';
+                  FirebaseFirestore.instance.collection('households').doc(householdId).collection('items').doc(itemId).update({
+                    'exceptions': FieldValue.arrayRemove([{'date': dateStr, 'status': 'hidden'}]),
+                    'updatedAt': Timestamp.now(),
+                  });
+                } else {
+                  _setStatus(householdId, itemId, entry.feedStatus, null);
+                }
+              }),
+            ));
+          }
+          return false; // Don't remove from tree — stream handles UI updates
         }
       },
       background: Container(
@@ -573,44 +622,49 @@ class _FeedList extends StatelessWidget {
           ],
         ),
       ),
-      direction: DismissDirection.horizontal,
-      onDismissed: (_) {
-        // Swipe left: mark complete + hide in one action
-        if (entry.isRecurring && entry.occurrenceDate != null) {
-          // For recurring: add hidden exception for this occurrence
-          final dateStr = '${entry.occurrenceDate!.year}-${entry.occurrenceDate!.month.toString().padLeft(2, '0')}-${entry.occurrenceDate!.day.toString().padLeft(2, '0')}';
-          FirebaseFirestore.instance.collection('households').doc(householdId).collection('items').doc(itemId).update({
-            'exceptions': FieldValue.arrayUnion([{'date': dateStr, 'status': 'hidden'}]),
-            'updatedAt': Timestamp.now(),
-          });
-        } else {
-          _setStatus(householdId, itemId, 'hidden', entry.feedStatus);
-        }
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('${entry.title} done'),
-            action: SnackBarAction(label: 'Undo', onPressed: () {
-              if (entry.isRecurring && entry.occurrenceDate != null) {
-                // Can't easily undo array union — just restore by removing the exception
-                // For simplicity, set status back (won't perfectly undo recurring)
-              } else {
-                _setStatus(householdId, itemId, entry.feedStatus, null);
-              }
-            }),
-          ));
-        }
-      },
       child: _FeedCard(entry: entry, householdId: householdId, memberInfo: memberInfo),
     );
   }
 
   void _setStatus(String householdId, String itemId, String status, String? _) {
-    FirebaseFirestore.instance
-        .collection('households')
+    final db = FirebaseFirestore.instance;
+    db.collection('households')
         .doc(householdId)
         .collection('items')
         .doc(itemId)
         .update({'status': status, 'updatedAt': Timestamp.now()});
+
+    // Record activity event for completion (hidden = done)
+    if (status == 'hidden' || status == 'cancelled') {
+      db.collection('households').doc(householdId).collection('items').doc(itemId).get().then((doc) {
+        if (!doc.exists) return;
+        final data = doc.data()!;
+        final userId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
+
+        // Get actor name from members
+        db.collection('households').doc(householdId).collection('members')
+            .where('role', isEqualTo: 'primaryParent').limit(1).get().then((members) {
+          final actorName = members.docs.isNotEmpty
+              ? (members.docs.first.data()['name'] as String? ?? 'Parent')
+              : (FirebaseAuth.instance.currentUser?.displayName ?? 'Parent');
+
+          db.collection('households').doc(householdId).collection('activityEvents').add({
+            'householdId': householdId,
+            'activityType': status == 'hidden' ? 'completion' : 'cancellation',
+            'actorId': userId,
+            'actorName': actorName,
+            'title': data['title'] ?? 'Untitled',
+            'subtitle': null,
+            'childId': data['childId'],
+            'childName': data['childName'],
+            'relatedItemId': itemId,
+            'sourceMessageId': null,
+            'metadata': {},
+            'createdAt': Timestamp.now(),
+          });
+        });
+      }).catchError((_) {});
+    }
   }
 
   bool _isSameDay(DateTime? a, DateTime? b) {

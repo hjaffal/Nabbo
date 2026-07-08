@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -54,6 +55,10 @@ class ReviewDetailScreen extends ConsumerWidget {
           final sourceData = sourceSnap.data!.data() as Map<String, dynamic>;
           final status = sourceData['processingStatus'] ?? 'pending';
           final content = sourceData['originalContent'] ?? '';
+          final attachmentUrl = sourceData['attachmentUrl'] as String?;
+          final inputMethod = sourceData['inputMethod'] as String?;
+          final isImage = inputMethod == 'image' || inputMethod == 'photo' ||
+              (attachmentUrl != null && attachmentUrl.isNotEmpty);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.xl),
@@ -70,8 +75,55 @@ class ReviewDetailScreen extends ConsumerWidget {
                       Text('Original message',
                           style: Theme.of(context).textTheme.labelMedium),
                       const SizedBox(height: 8),
-                      Text(content,
-                          style: Theme.of(context).textTheme.bodyMedium),
+                      if (isImage && attachmentUrl != null && attachmentUrl.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            attachmentUrl,
+                            height: 200,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              height: 100,
+                              color: AppColors.surfaceSoft,
+                              child: const Center(child: Icon(Icons.image_rounded, color: AppColors.textMuted)),
+                            ),
+                          ),
+                        ),
+                        if (content.isNotEmpty && content.length < 500) ...[
+                          const SizedBox(height: 8),
+                          Text(content,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                              maxLines: 5,
+                              overflow: TextOverflow.ellipsis),
+                        ],
+                      ] else if (isImage) ...[
+                        // Image source but no attachment URL available
+                        Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceSoft,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.image_rounded, color: AppColors.textMuted),
+                                SizedBox(width: 8),
+                                Text('Photo shared', style: TextStyle(color: AppColors.textMuted)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        Text(
+                          content.length > 500 ? '${content.substring(0, 500)}...' : content,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          maxLines: 12,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -320,14 +372,18 @@ class _ItemReviewCard extends ConsumerWidget {
 
           // Title
           Text(item.title,
-              style: Theme.of(context).textTheme.titleSmall),
+              style: Theme.of(context).textTheme.titleSmall,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis),
           if (item.summary != null) ...[
             const SizedBox(height: 4),
             Text(item.summary!,
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
-                    ?.copyWith(color: AppColors.textSecondary)),
+                    ?.copyWith(color: AppColors.textSecondary),
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis),
           ],
           const SizedBox(height: AppSpacing.sm),
 
@@ -518,8 +574,8 @@ class _ItemReviewCard extends ConsumerWidget {
       await repo.approveCancel(householdId, item.id, item.targetItemId!,
           cancelDate: cancelDate, isRecurring: isRecurring);
     } else {
-      // Normal create approval — require date if missing
-      if (item.date == null && item.action == ItemAction.create) {
+      // Normal create approval — require date if missing (but not for recurring items)
+      if (item.date == null && item.recurrence == null && item.action == ItemAction.create) {
         final pickedDate = await _pickDateForApproval(context);
         if (pickedDate == null) return; // User cancelled
         // Save date then approve
@@ -538,31 +594,51 @@ class _ItemReviewCard extends ConsumerWidget {
     }
   }
 
-  /// Shows a date+time picker when approving an item without a date.
+  /// Shows a Cupertino-style date+time picker bottom sheet when approving an item without a date.
   /// Defaults to tomorrow morning (09:00).
   Future<DateTime?> _pickDateForApproval(BuildContext context) async {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final defaultDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9, 0);
+    DateTime selected = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9, 0);
 
-    final date = await showDatePicker(
+    final result = await showModalBottomSheet<DateTime>(
       context: context,
-      initialDate: defaultDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2030),
-      helpText: 'When is this due?',
+      builder: (ctx) => Container(
+        height: 300,
+        padding: const EdgeInsets.only(top: 8),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+            // Header with confirm button
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+                  Text('When is this due?', style: TextStyle(fontWeight: FontWeight.w600)),
+                  TextButton(onPressed: () => Navigator.pop(ctx, selected), child: Text('Done', style: TextStyle(fontWeight: FontWeight.w700))),
+                ],
+              ),
+            ),
+            // Cupertino picker
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.dateAndTime,
+                initialDateTime: selected,
+                minimumDate: DateTime.now(),
+                onDateTimeChanged: (dt) => selected = dt,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-    if (date == null) return null;
-
-    if (!context.mounted) return null;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 9, minute: 0),
-      helpText: 'What time?',
-    );
-
-    final hour = time?.hour ?? 9;
-    final minute = time?.minute ?? 0;
-    return DateTime(date.year, date.month, date.day, hour, minute);
+    return result;
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
@@ -694,82 +770,90 @@ class _AmbiguityPickerState extends ConsumerState<_AmbiguityPicker> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const SizedBox.shrink();
-    if (_children.isEmpty) return const SizedBox.shrink();
-    if (_selectedChildId != null) return const SizedBox.shrink();
+    if (_loading || _children.isEmpty || _selectedChildId != null) {
+      return const SizedBox(height: 0, width: 0);
+    }
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.warmYellow.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(
-          color: AppColors.warmYellow.withValues(alpha: 0.3),
+    return IntrinsicHeight(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.warmYellow.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          border: Border.all(
+            color: AppColors.warmYellow.withValues(alpha: 0.3),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.person_search_rounded,
-                  size: 16, color: AppColors.warmYellow),
-              const SizedBox(width: 6),
-              Text(
-                _label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _children.map((child) {
-              final color = child.color != null
-                  ? Color(int.parse(child.color!, radix: 16) | 0xFF000000)
-                  : AppColors.primary;
-              return GestureDetector(
-                onTap: () => _selectChild(child),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-                    border: Border.all(color: color.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        child.name,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.person_search_rounded,
+                    size: 16, color: AppColors.warmYellow),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    _label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              );
-            }).toList(),
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _children.map((child) {
+                final color = child.color != null
+                    ? Color(int.parse(child.color!, radix: 16) | 0xFF000000)
+                    : AppColors.primary;
+                return GestureDetector(
+                  onTap: () => _selectChild(child),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                      border: Border.all(color: color.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          child.name,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
