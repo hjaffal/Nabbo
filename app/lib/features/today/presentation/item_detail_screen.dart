@@ -315,7 +315,8 @@ class ItemDetailScreen extends ConsumerWidget {
 
   String? _formatDateTime(DateTime? dt) {
     if (dt == null) return null;
-    return '${dt.day}/${dt.month}/${dt.year} at ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final utc = dt.toUtc();
+    return '${utc.day}/${utc.month}/${utc.year} at ${utc.hour.toString().padLeft(2, '0')}:${utc.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatRecurrence(RecurrenceRule rule) {

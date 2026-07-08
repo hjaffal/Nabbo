@@ -375,7 +375,7 @@ class _ItemReviewCard extends ConsumerWidget {
           if (!isChange) ...[
             if (item.date != null)
               _miniField(context, 'Date',
-                  '${item.date!.day}/${item.date!.month}/${item.date!.year} at ${item.date!.hour.toString().padLeft(2, '0')}:${item.date!.minute.toString().padLeft(2, '0')}'),
+                  '${item.date!.toUtc().day}/${item.date!.toUtc().month}/${item.date!.toUtc().year} at ${item.date!.toUtc().hour.toString().padLeft(2, '0')}:${item.date!.toUtc().minute.toString().padLeft(2, '0')}'),
             if (item.location != null)
               _miniField(context, 'Location', item.location!),
             if (item.ownerName != null)

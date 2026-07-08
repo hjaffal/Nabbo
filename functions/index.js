@@ -472,15 +472,14 @@ function parseDate(dateStr, timezone) {
       }
     }
 
-    // 4. Combine date + time, treating as household local time
+    // 4. Combine date + time — store as-is (no timezone conversion)
+    // Times from user input represent "wall clock time" — store directly in UTC
+    // The app displays hours/minutes directly without timezone offset
     if (targetDate) {
       if (hours !== null) {
         targetDate.setHours(hours, minutes, 0, 0);
       }
-      // Convert from household local time to UTC
-      // Get the offset for the household timezone at this date
-      const utcDate = convertLocalToUTC(targetDate, timezone);
-      return Timestamp.fromDate(utcDate);
+      return Timestamp.fromDate(targetDate);
     }
 
     // 5. Last resort
@@ -494,27 +493,26 @@ function parseDate(dateStr, timezone) {
 }
 
 /**
- * Convert a date (treated as local time in the given timezone) to UTC.
+ * Convert a date where hours were set as "local household time" to proper UTC.
+ * Cloud Functions run in UTC, so setHours(16,0) = 16:00 UTC.
+ * We need: 16:00 local (UTC+2) = 14:00 UTC → subtract offset.
  */
 function convertLocalToUTC(date, timezone) {
   try {
-    // Use Intl to get the timezone offset
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-      hour12: false,
-    });
+    // Get the UTC offset for the target timezone at this date
+    // by comparing the date formatted in the timezone vs UTC
+    const utcStr = date.toLocaleString('en-US', { timeZone: 'UTC' });
+    const localStr = date.toLocaleString('en-US', { timeZone: timezone });
 
-    // Get what "now" looks like in the target timezone
-    const nowInTz = formatter.format(date);
-    // Parse it back to a date (this gives us the offset)
-    const tzDate = new Date(nowInTz);
+    const utcDate = new Date(utcStr);
+    const localDate = new Date(localStr);
 
-    // Calculate offset: difference between UTC and local representation
-    const offsetMs = date.getTime() - tzDate.getTime();
+    // Offset = local - UTC (positive for east of UTC)
+    // e.g., for UTC+2: local shows 18:00 when UTC is 16:00 → offset = +2h
+    const offsetMs = localDate.getTime() - utcDate.getTime();
 
-    // Apply offset: if timezone is UTC+2, we need to subtract 2 hours to get UTC
+    // To convert "local time stored as UTC" to actual UTC: subtract offset
+    // 16:00 (meant as local) - 2h offset = 14:00 UTC
     return new Date(date.getTime() - offsetMs);
   } catch (_) {
     // Fallback: assume UTC+2 (Central European Summer Time)

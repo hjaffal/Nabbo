@@ -100,7 +100,7 @@ class FeedEntry {
 
   /// Returns true if dateTime has a non-midnight time component
   bool get hasTime =>
-      dateTime != null && (dateTime!.hour != 0 || dateTime!.minute != 0);
+      dateTime != null && (dateTime!.toUtc().hour != 0 || dateTime!.toUtc().minute != 0);
 }
 
 class _FeedContent extends StatelessWidget {
@@ -404,7 +404,9 @@ class _FeedContent extends StatelessWidget {
   bool _isSameDay(DateTime? a, DateTime? b) {
     if (a == null && b == null) return true;
     if (a == null || b == null) return false;
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+    final au = a.toUtc();
+    final bu = b.toUtc();
+    return au.year == bu.year && au.month == bu.month && au.day == bu.day;
   }
 
   Stream<List<FeedEntry>> _buildFeedStream(DocumentReference householdRef) {
@@ -941,7 +943,8 @@ class _FeedCard extends StatelessWidget {
   }
 
   String _formatTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final utc = dt.toUtc();
+    return '${utc.hour.toString().padLeft(2, '0')}:${utc.minute.toString().padLeft(2, '0')}';
   }
 
   void _onTap(BuildContext context) {
