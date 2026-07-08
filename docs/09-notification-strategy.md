@@ -2,387 +2,290 @@
 
 ## Purpose
 
-Notifications are critical but dangerous. A good notification helps a parent act before something is missed. A bad notification becomes another source of noise.
-
-Nabbo must not behave like a generic reminder app. It should notify only when the message protects the household from forgetting, delay, confusion, or missed ownership.
+Notifications are the only way Nabbo reaches the parent **outside the app**. They must earn trust by being useful, timely, and rare.
 
 > Notify when action is needed. Stay quiet when information can wait.
 
 ---
 
-## Core Principle
+## Core Rules
 
-**Every Nabbo notification must have a clear action. No action, no notification.**
-
-The product should not send notifications just because something was processed, stored, categorized, or updated. Those are system events, not user events.
-
-**Good:** "Training time changed. Review needed."
-**Bad:** "Nabbo processed your content."
-
----
-
-## Philosophy
-
-Parents already receive too many alerts from schools, WhatsApp, email, activity groups, work apps, and family chats. Nabbo should not add another stream of interruptions.
-
-The product should act like a **calm household assistant** — surfacing important items at the right time, to the right person, with the right action.
-
-Notifications should be **rare enough to be trusted**. If Nabbo sends too many alerts, parents will ignore them. Once ignored, the product loses one of its strongest execution tools.
+1. **No action, no notification** — system events (processed, stored) are not user events
+2. **High urgency should be rare** — if everything is urgent, nothing is
+3. **Every notification opens the right screen** — never the generic home
+4. **Group related items** — don't send 5 alerts for one event
+5. **Suppress after action** — once done/dismissed, stop notifying
+6. **Default to quiet** — users opt-in to more, not opt-out of less
 
 ---
 
 ## Notification Types
 
-### 1. Review Needed
+### 1. Items Need Review
 
-Nabbo found something that needs confirmation before entering the household plan.
+New items extracted from a capture that need parent approval.
 
-> "School trip found. Review needed."
+| Trigger | Example | Priority |
+|---------|---------|----------|
+| AI extracted items with deadline today/tomorrow | "School trip found — form due tomorrow" | High |
+| AI extracted items (general) | "3 items to review" | Medium |
+| AI detected a change to existing item | "Football training moved to 18:30" | High |
 
-Use when: item is important, uncertain, or time-sensitive.
+**Opens:** Review Detail screen for that source message.
 
-### 2. Change Detected
+### 2. Deadline Approaching
 
-New information may update an existing plan. **One of the highest-value types** — parents often miss changes hidden in messages.
+A confirmed deadline or task with a date that's coming up.
 
-> "Football training changed from 17:00 to 18:30."
+| Trigger | Example | Priority |
+|---------|---------|----------|
+| Deadline due today | "Permission form due today" | High |
+| Deadline due tomorrow | "Enroll in summer school — due tomorrow" | Medium |
+| Deadline in 3 days (optional) | "Payment due in 3 days" | Low |
 
-Show old and new values when possible. "Training changed: 17:00 → 18:30" is better than "Training updated."
+**Opens:** Item Detail screen.
 
-### 3. Deadline Risk
+### 3. Event Reminder
 
-A form, payment, reply, or task is due soon.
+A confirmed event is coming up soon.
 
-> "Permission form due tomorrow. Owner missing."
+| Trigger | Example | Priority |
+|---------|---------|----------|
+| Event in 1 hour | "Basketball in 1 hour at Sports Hall" | High |
+| Event tomorrow morning | "Dentist tomorrow at 9:00" | Medium |
 
-Use only when the deadline is near and action is still open.
+**Opens:** Item Detail screen.
 
-### 4. Owner Gap
+### 4. Daily Brief (opt-in)
 
-Something important has no assigned owner.
+A morning summary of what's happening today.
 
-> "Pickup at 18:30 has no owner."
+| Trigger | Example | Priority |
+|---------|---------|----------|
+| 7:30 AM (configurable) | "Today: 3 events, 1 deadline. Yara has swimming at 16:00." | Low |
 
-Central to Nabbo's value. A task without an owner is a risk.
-
-**Tone must be neutral — no blame.**
-- ❌ "You forgot to assign pickup."
-- ✅ "Pickup still needs an owner."
-
-### 5. Preparation Needed
-
-Something must be packed, brought, signed, paid, or prepared before an event.
-
-> "Pack Adam's blue jersey and size 4 ball before football."
-
-Timed around useful preparation windows, not sent randomly. Group related items:
-- ❌ "Bring towel." / "Bring goggles." / "Bring shampoo."
-- ✅ "Swimming tomorrow: pack towel, goggles, and shampoo."
-
-### 6. Daily Brief
-
-Short view of the day or tomorrow.
-
-> "Today: 4 events, 2 checklist items, 1 owner gap."
-
-Opt-in or configurable. Not every parent wants a morning summary. Should answer: what's happening, what needs action, what must be brought, what has no owner, what changed, what's at risk.
+**Opens:** Feed screen.
 
 ---
 
-## Priority Levels
+## What We Do NOT Notify About
 
-### High Priority (interrupt immediately)
-
-- Time change for today
-- Location change for today
-- Pickup owner missing
-- Deadline due today
-- Required item needed soon
-- Conflicting events
-
-### Medium Priority (useful but not urgent)
-
-- Deadline due tomorrow
-- Payment due tomorrow
-- Form due in two days
-- Checklist for tomorrow
-- New review item with no immediate deadline
-
-### Low Priority (should not interrupt)
-
-- Future event added
-- Routine suggestion
-- Non-urgent checklist improvement
-- General weekly planning item
-
-Low-priority items live inside the app or daily brief — not as push notifications.
-
----
-
-## Timing Strategy
-
-Notifications should match family pressure points:
-
-| Window | Focus | Examples |
-|--------|-------|----------|
-| **Morning** | Today's launch | School bags, forms due today, items to bring, drop-off/pickup ownership |
-| **Midday** | Upcoming deadlines & after-school logistics | Activity changes, pickup assignments, payments due today |
-| **After-school** | Movement and preparation | Leave time, sports gear, activity location, owner gaps |
-| **Evening** | Tomorrow preparation | Pack for tomorrow, forms due, early departures, payments due |
-| **Weekend** | Irregular plans | Tournaments, trips, family events, weekend checklists |
-
-**Avoid late-night notifications** unless explicitly configured by the user.
-
----
-
-## Default Configuration
-
-### Enabled by default
-- Urgent review items
-- Same-day changes
-- Deadline due today
-- Owner missing for today
-- Required items for today
-
-### Optional (user enables)
-- Morning brief
-- Evening reset
-- Weekly family brief
-- Deadline due tomorrow
-- Preparation reminders
-
-### Disabled by default
+- Item processed/stored (system event)
+- Item approved (user just did this)
+- Low-priority future events (they're in the Feed)
 - Routine suggestions
-- Low-priority future events
-- General product updates
-- Non-actionable summaries
-
-The default experience should feel useful, not loud.
+- Items without dates (they sit in the Feed quietly)
+- Completed/hidden items
 
 ---
 
-## Notification Rules by Type
+## Timing
 
-### Review Notifications
+| Window | What gets sent |
+|--------|---------------|
+| **Morning (7:30)** | Daily brief (opt-in), deadlines due today |
+| **Midday (12:00)** | Deadlines due today still unresolved |
+| **Afternoon (15:00)** | Event reminders for today's after-school activities |
+| **Evening (19:00)** | Tomorrow's events and deadlines |
 
-**Send when:**
-- Captured input creates an important item
-- Item has deadline today or tomorrow
-- Item changes time, date, or location
-- Item contains form, payment, pickup, drop-off, or required item
-- Item has low-confidence fields needing review
+Notifications outside these windows only for:
+- Newly extracted items with HIGH urgency (deadline today/change today)
+- Time-sensitive changes (event in next 2 hours moved/cancelled)
 
-**Do NOT send when:**
-- Item is low priority and not time-sensitive
-- Extraction found no clear action
-- Input is a duplicate
-- Item can wait for next daily brief
+### Quiet Hours
 
-### Change Notifications
-
-**Send immediately when detecting:**
-- Time, date, or location changed
-- Event cancelled
-- Required item added for today/tomorrow
-- Deadline changed
-- Pickup/drop-off information changed
-
-### Deadline Notifications
-
-**Send when:**
-- Form, payment, or reply due today/tomorrow
-- Task is overdue
-- Deadline has no owner
-
-**Do NOT notify** about deadlines already completed.
-
-### Preparation Notifications
-
-**Send based on:**
-- Event time
-- Required items and checklist status
-- Owner assignment
-- User preference
-- Typical family routine
-
-**Group related items** — don't send one notification per item.
+Default: 22:00 — 07:00. No notifications.
+Exception: none (not even high priority during quiet hours — it can wait until morning).
+User configurable.
 
 ---
 
-## Content Rules
+## Notification Content
 
-Notifications must be **short, specific, and action-oriented**.
+### Format
 
-**Good structure:** Object + action.
+```
+Title: Short, specific (what)
+Body: Context + action (why + what to do)
+```
 
-| ✅ Good | ❌ Bad |
+### Examples
+
+| Good ✅ | Bad ❌ |
 |---------|--------|
-| "Yara needs €5 tomorrow." | "You have updates." |
-| "Football pickup has no owner." | "Nabbo needs your attention." |
-| "Training moved to 18:30." | "New family item processed." |
-| "Pack blue jersey and size 4 ball." | "Reminder from Nabbo." |
-| "Permission form due tomorrow." | "Check Nabbo for details." |
-
-The parent should understand the value **before opening the app**.
+| "Basketball moved to 18:30" | "You have updates" |
+| "Yara needs €5 for school tomorrow" | "Nabbo needs attention" |
+| "Permission form due tomorrow" | "Check Nabbo for details" |
+| "3 items to review from school email" | "New items processed" |
+| "Dentist at 4pm today — pick up Adam early" | "Reminder" |
 
 ---
 
-## Deep Link Rules
+## Grouping
 
-Every notification must open the **relevant place** in the app:
-
-| Notification Type | Opens |
-|------------------|-------|
-| Review needed | Review Card |
-| Deadline | Deadline item |
-| Checklist / preparation | Checklist view |
-| Change detected | Change Card |
-| Owner gap | Assignment action |
-| Daily brief | Today Command Center |
-
-**Never** open the generic home screen unless there is no specific object. Notifications must reduce navigation, not add it.
-
----
-
-## Grouping Rules
-
-Group low and medium-priority notifications. Don't send five separate alerts for the same event.
+Don't send multiple notifications for the same source:
 
 **Bad:**
-- "Bring water."
-- "Bring jersey."
-- "Bring ball."
-- "Football at 18:30."
-- "Pickup owner missing."
+- "Football training on Friday"
+- "Bring blue jersey"
+- "Bring size 4 ball"
+- "Pickup owner missing"
 
-**Better:**
-- "Football at 18:30: pack 3 items. Pickup owner missing."
+**Good:**
+- "Football Friday at 18:30 — 2 items to pack, pickup needs owner"
 
-Group by: event, child, time window, checklist, deadline, urgency.
-
-High-priority changes can still be sent separately when needed.
+Group by: source message, event, child, time window.
 
 ---
 
-## Quiet Hours
+## Deep Linking
 
-Support quiet hours — default avoids late-night alerts.
+| Notification | Opens |
+|-------------|-------|
+| Items to review | Review Detail (source message) |
+| Deadline approaching | Item Detail |
+| Event reminder | Item Detail |
+| Change detected | Review Detail (for the change proposal) |
+| Daily brief | Feed screen |
 
-During quiet hours, only critical same-day or next-morning risks are allowed (if user enables):
-- Tomorrow morning event has no owner
-- Required item for early morning event not ready
-- Important deadline expires before next normal notification window
+---
 
-Late notifications damage trust quickly.
+## Implementation Architecture
+
+### Current (v1)
+
+```
+Cloud Functions → FCM → Device
+```
+
+Two triggers:
+1. **`extractSourceMessage`** — sends notification after items are created (already implemented)
+2. **`checkDeadlines`** — scheduled hourly, checks for deadlines in next 24h (already implemented)
+
+### Needed additions
+
+3. **Event reminders** — scheduled function checks for confirmed events in next 2 hours
+4. **Daily brief** — scheduled function at 7:30 AM (user timezone), compiles summary
+5. **Change notifications** — sent immediately when AI detects `action: update/cancel`
+
+### Notification Payload
+
+```javascript
+{
+  token: userFcmToken,
+  notification: {
+    title: "Basketball moved to 18:30",
+    body: "Adam's training changed from 17:00. Tap to review."
+  },
+  data: {
+    type: "review_needed | deadline | event_reminder | daily_brief | change_detected",
+    householdId: "...",
+    itemId: "..." // for deep linking
+  },
+  apns: {
+    payload: {
+      aps: { sound: "default", badge: unreadCount }
+    }
+  }
+}
+```
+
+### FCM Token Storage
+
+```
+userTokens/{userId}/
+  fcmToken: "device-token"
+  updatedAt: Timestamp
+```
 
 ---
 
 ## Suppression Rules
 
-Suppress notifications when no longer useful:
-
-- Task completed
-- Payment marked paid
-- Form submitted
-- Item packed
-- Event cancelled
-- Risk dismissed
-- Item snoozed
-- User already opened and acted on the item
-
-**Notifications that continue after completion are a fast way to lose trust.**
+Stop notifying when:
+- Item is approved (review notification suppressed)
+- Item is completed/hidden (deadline reminder suppressed)
+- Item is cancelled (event reminder suppressed)
+- User has already opened the item since last notification
+- Source message is dismissed
 
 ---
 
-## Notification Ownership (Future)
+## User Settings
 
-When multi-user households are supported:
-- Hasan owns pickup → Hasan gets pickup reminder
-- Sara owns payment → Sara gets payment reminder
-- Yara owns packing → Yara gets simple checklist reminder
+### Notification Preferences (in Settings)
 
-The primary parent should not receive every notification forever — that recreates the mental load Nabbo is meant to reduce.
+| Setting | Default |
+|---------|---------|
+| Items need review | ✅ On |
+| Deadline reminders (today) | ✅ On |
+| Deadline reminders (tomorrow) | ✅ On |
+| Event reminders (1 hour before) | ✅ On |
+| Change detected | ✅ On |
+| Daily morning brief | ❌ Off |
+| Quiet hours start | 22:00 |
+| Quiet hours end | 07:00 |
 
-**v1:** Owner labels shape the Today view, but notifications go to primary user only.
+Stored on household document:
+```json
+{
+  "notificationPrefs": {
+    "reviewAlerts": true,
+    "deadlineToday": true,
+    "deadlineTomorrow": true,
+    "eventReminders": true,
+    "changeAlerts": true,
+    "dailyBrief": false,
+    "quietStart": "22:00",
+    "quietEnd": "07:00"
+  }
+}
+```
 
 ---
 
-## Escalation (Future)
+## Priority → Behavior
 
-Light escalation for unresolved items:
-1. First alert goes to owner
-2. If no action taken → remind again near deadline
-3. If still unhandled → show as risk in Today
-
-Escalation should be conservative. The product must **not** become a nagging system.
+| Priority | Behavior |
+|----------|----------|
+| High | Send immediately (respects quiet hours), sound + badge |
+| Medium | Send in next time window, sound + badge |
+| Low | No push notification — lives in app only (Feed, daily brief) |
 
 ---
 
-## Personalization (v1)
+## Implementation Phases
 
-Users can configure by category:
-- Review alerts
-- Change alerts
-- Deadline alerts
-- Owner gap alerts
-- Preparation reminders
-- Morning brief
-- Evening reset
-- Weekly brief
-- Quiet hours
-- Reminder timing
+### Phase 1 (done)
+- ✅ Notification after extraction (items to review)
+- ✅ Hourly deadline check (24h window)
 
-Per-child or per-activity configuration can come later. Keep settings simple for v1.
+### Phase 2 (next)
+- Event reminders (2 hours before confirmed events)
+- Change notifications (immediate when `action: update/cancel`)
+- Better grouping (count of items, not one per item)
+
+### Phase 3 (later)
+- Daily brief (morning summary)
+- User notification preferences (settings screen already exists)
+- Deep linking to specific items
+- Badge count management
+
+### Phase 4 (future)
+- Per-owner notifications (when multi-user)
+- Smart timing (learn when user acts, send at that time)
+- Escalation for ignored deadlines
 
 ---
 
 ## Metrics
 
-| Metric | What It Measures |
-|--------|-----------------|
-| Notification open rate | Relevance |
-| Action rate after notification | Usefulness |
-| Dismiss rate | Noise level |
-| Mute rate | Trust damage |
-| Category opt-out rate | Category quality |
-| Time from notification to action | Efficiency |
-| Repeated ignored notifications | Fatigue |
-| Notifications per household per day | Volume control |
+| Metric | Target |
+|--------|--------|
+| Notification open rate | > 40% |
+| Action within 5 min of notification | > 25% |
+| Notifications per day per household | 2-5 |
+| Mute/disable rate | < 10% |
+| Notifications that lead to approval | > 60% |
 
-**High volume is not success. The strongest metric is action rate.**
-
-A good notification leads to: review, assignment, completion, packing, payment, or risk resolution.
-
----
-
-## Failure Modes
-
-The notification strategy fails if:
-- Nabbo becomes noisy
-- Users mute notifications
-- Notifications are vague
-- Notifications open the wrong screen
-- Completed items keep triggering alerts
-- Everything feels urgent
-- Owner gaps feel like blame
-- System updates are sent instead of action prompts
-
-> The worst version of Nabbo is another app demanding attention.
-> The best version is a quiet system that interrupts only when it prevents a miss.
-
----
-
-## Product Rules
-
-1. No action, no notification
-2. High urgency should be rare
-3. Changes matter more than routine updates
-4. Owner gaps matter when timing or responsibility matters
-5. Group related items
-6. Suppress completed items
-7. Deep-link every notification
-8. Avoid vague wording
-9. Avoid blame
-10. Default to quiet
-11. Let users control notification categories
-12. Measure action, not opens
+**The goal: every notification makes the parent think "glad I saw that" not "another alert."**
