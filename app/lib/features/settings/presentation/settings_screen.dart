@@ -8,6 +8,7 @@ import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 import 'edit_household_screen.dart';
 import 'family_members_screen.dart';
+import 'history_screen.dart';
 import 'notification_settings_screen.dart';
 import 'delete_account_screen.dart';
 
@@ -116,6 +117,16 @@ class SettingsScreen extends ConsumerWidget {
                 FirebaseAuth.instance.currentUser?.displayName ?? 'User'),
             subtitle:
                 Text(FirebaseAuth.instance.currentUser?.email ?? ''),
+          ),
+          ListTile(
+            leading: const Icon(Icons.history_rounded),
+            title: const Text('History'),
+            subtitle: const Text('Hidden and completed items'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HistoryScreen()),
+            ),
           ),
           ListTile(
             leading: Icon(
