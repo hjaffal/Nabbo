@@ -52,13 +52,15 @@
 | Generous extraction | Deadlines, soft actions, opportunities all create items |
 | Change detection | AI compares against existing items (action: create/update/cancel) |
 | Owner matching | Maps "Dad", "Mum", "I" to family members (adults only) |
-| Time preservation | "Friday at 18:30" stored correctly with timezone awareness |
+| Time preservation | Proper timezone handling (store real UTC, display local) |
 | Recurrence extraction | "Every Tuesday" → weekly rule with endDate |
 | Notes field | Captures links, contacts, instructions, extra context |
 | Category assignment | AI picks a category for contextual icons |
+| Overall confidence | AI returns overallConfidence per item (high/medium/low) |
 | HTML stripping | Cleans email HTML before sending to Gemini |
 | School email handling | Prompt explicitly handles institutional emails |
 | Household intelligence | Associations injected into prompt for child inference |
+| Auto-approval | High-confidence items skip review, go directly to confirmed |
 
 ### Review
 
@@ -102,6 +104,7 @@
 | Edit household | Name, timezone, language, location (Places autocomplete) |
 | Family members | List with color dots, add/edit/delete, photo upload, color picker |
 | Email alias | Display + copy |
+| Auto-approval toggle | Enable/disable auto-confirm for high-confidence items |
 | Notification preferences | Toggles per type, quiet hours (SharedPreferences) |
 | History screen | See hidden/completed items, restore or delete permanently |
 | Sign out / Delete account | Account management |
@@ -133,44 +136,43 @@
 | Feature | Description |
 |---------|-------------|
 | Firebase project (nabbo-app-4d98a) | europe-west1 |
-| Cloud Functions (4) | extractSourceMessage, checkDeadlines, checkUpcomingEvents, buildAssociations |
+| Cloud Functions (5) | extractSourceMessage, checkDeadlines, checkUpcomingEvents, dailyBrief, buildAssociations |
 | Cloud Run (email ingestion) | SendGrid webhook endpoint |
 | Firestore indexes | Optimized for feed/review/notification queries |
 | API keys in .gitignore | Places + Weather keys not in git |
 | Multi-language strings | EN/FR/DE/ES translations ready (40+ keys) |
+| Proper timezone handling | Store real UTC, display in local timezone |
 
 ---
 
+
 ## Remaining 🔲
 
-### High Priority (core experience gaps)
+### High Priority
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 1 | Wire multi-language into UI | Medium | Replace hardcoded strings with `AppStrings.get()` based on household language |
+| 1 | Wire multi-language into all screens | Medium | Replace remaining hardcoded strings with `AppStrings.get()` |
 | 2 | Push notifications on device | Blocked | Needs Apple Developer account ($99/year) for APNs key |
 | 3 | iOS native share extension | Blocked | Needs Apple Developer account for App Groups |
-| 4 | Notification preferences to Firestore | Small | Cloud Functions respect user settings (quiet hours, toggles) |
-| 5 | Daily brief notification | Small | Morning summary: "Today: 3 events, 1 deadline" |
 
 ### Medium Priority (polish & intelligence)
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 6 | Household intelligence — email sender learning | Small | Phase 3: associate email senders with children on approval |
-| 7 | Household intelligence — ambiguity picker UI | Medium | Phase 5: "Is this about Adam or Yara?" quick picker in review |
-| 8 | Onboarding improvement | Small | Prompt in Feed if no children added yet |
-| 9 | Item category editable | Small | Add category text field to Edit Item screen |
-| 10 | Better grouping for notifications | Small | "Football Friday — 2 items to pack" instead of 4 alerts |
+| 4 | Household intelligence — email sender learning | Small | Phase 3: associate email senders with children on approval |
+| 5 | Household intelligence — ambiguity picker UI | Medium | "Is this about Adam or Yara?" quick picker in review |
+| 6 | Onboarding improvement | Small | Prompt in Feed if no children added yet |
+| 7 | Item category editable by user | Small | Add category text field to Edit Item screen |
+| 8 | Auto-approval ✨ indicator on feed cards | Small | Show subtle indicator for first 24h |
 
 ### Bug Fixes
 
 | # | Bug | Impact | Notes |
 |---|-----|--------|-------|
-| 1 | Weather not showing on iOS | Low | GPS permission flow may not trigger properly |
-| 2 | Some school emails get noAction | Medium | Prompt tuning — may need few-shot examples |
-| 3 | Places autocomplete API key restrictions | Medium | Works if key restrictions are set to "None" or bundle IDs |
-| 4 | Timezone conversion edge cases | Low | DST transitions may be off by 1 hour |
+| 1 | Weather not showing on iOS | Low | GPS permission flow may not trigger |
+| 2 | Some school emails get noAction | Medium | Prompt tuning needed |
+| 3 | Places autocomplete API key restrictions | Medium | Needs key set to "None" or bundle IDs |
 
 ### Future (v2)
 
@@ -178,19 +180,17 @@
 |---|---------|-------------|
 | 1 | Calendar grid view | Visual calendar showing items by day/week |
 | 2 | Risk detection | Auto-generate risks (no owner, deadline near, conflict) |
-| 3 | Per-owner notifications | When multi-user: each parent gets their own alerts |
-| 4 | Smart notification timing | Learn when user acts, send at that time |
-| 5 | Evening reset / tomorrow prep | Evening notification: "Tomorrow: pack X, deadline Y" |
-| 6 | Routine suggestions | Detect repeated patterns, suggest routines |
+| 3 | Per-owner notifications | Each parent gets their own alerts |
+| 4 | Smart notification timing | Learn user patterns |
+| 5 | Evening reset / tomorrow prep | "Tomorrow: pack X, deadline Y" |
+| 6 | Routine suggestions | Detect repeated patterns |
 | 7 | Multi-user households | Second parent account with shared data |
-| 8 | Offline support | Firestore offline persistence (partially working) |
-| 9 | Data export | Export household data as PDF/CSV |
-| 10 | Onboarding video/tutorial | First-time user guidance |
-| 11 | Widget (iOS/Android) | Home screen widget showing today's items |
-| 12 | Apple Watch / Wear OS | Quick view of upcoming items |
-| 13 | Web app (production) | Deploy Flutter web to custom domain |
-| 14 | Analytics dashboard | Household usage metrics for parents |
-| 15 | AI conversation | Ask Nabbo questions about schedule ("What does Adam have tomorrow?") |
+| 8 | Offline support | Firestore offline persistence |
+| 9 | Data export | Export as PDF/CSV |
+| 10 | Widget (iOS/Android) | Home screen widget |
+| 11 | Apple Watch / Wear OS | Quick view of upcoming items |
+| 12 | Web app (production) | Deploy to custom domain |
+| 13 | AI conversation | "What does Adam have tomorrow?" |
 
 ---
 
@@ -198,21 +198,22 @@
 
 ```
 Flutter App (iOS + Android + Web)
-    ↕ Firestore (2 collections: sourceMessages, items + associations, notifications)
+    ↕ Firestore (sourceMessages, items, associations, notifications)
     ↕ Cloud Storage (images, attachments)
     ↕ Firebase Auth (email/password)
 
-Cloud Functions (4):
-    extractSourceMessage → Gemini 2.5 Flash → items/
+Cloud Functions (5):
+    extractSourceMessage → Gemini 2.5 Flash → items/ (with auto-approval)
     checkDeadlines → notifications/ (hourly)
     checkUpcomingEvents → notifications/ (every 30 min)
+    dailyBrief → notifications/ (7:30 AM daily, opt-in)
     buildAssociations → associations/ (on item approval)
 
 Cloud Run:
     email-ingestion → SendGrid → sourceMessages/
 
 External APIs:
-    Gemini 2.5 Flash (extraction)
+    Gemini 2.5 Flash (extraction + confidence scoring)
     OpenWeatherMap (weather)
     Google Places (location autocomplete)
 ```
