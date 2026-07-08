@@ -16,6 +16,7 @@ abstract class HouseholdModel with _$HouseholdModel {
     String? zipCode,
     String? city,
     String? country,
+    @Default(false) bool autoApproval,
     @Default([]) List<String> memberIds,
     @TimestampConverter() DateTime? createdAt,
     @TimestampConverter() DateTime? updatedAt,

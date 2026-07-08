@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -69,6 +70,19 @@ class SettingsScreen extends ConsumerWidget {
                         },
                       ),
                     ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.auto_awesome_rounded),
+                    title: const Text('Auto-approve'),
+                    subtitle: const Text('Skip review for high-confidence items'),
+                    value: household.autoApproval,
+                    onChanged: (v) async {
+                      await FirebaseFirestore.instance
+                          .collection('households')
+                          .doc(household.id)
+                          .update({'autoApproval': v});
+                      ref.invalidate(_householdProvider);
+                    },
+                  ),
                 ],
               );
             },

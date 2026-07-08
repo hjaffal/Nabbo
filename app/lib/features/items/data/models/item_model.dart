@@ -63,6 +63,7 @@ abstract class ItemModel with _$ItemModel {
     String? summary,
     String? notes,
     String? category,
+    @Default(false) bool autoApproved,
     String? childId,
     String? childName,
     String? ownerId,

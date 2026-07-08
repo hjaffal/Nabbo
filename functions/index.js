@@ -203,10 +203,21 @@ exports.extractSourceMessage = onDocumentCreated(
           }
         }
 
+        // Determine if this item qualifies for auto-approval
+        const shouldAutoApprove =
+          householdData.autoApproval === true &&
+          item.overallConfidence === 'high' &&
+          (!item.uncertainFields || item.uncertainFields.length === 0) &&
+          action === 'create' &&
+          (item.type || 'task') !== 'deadline' &&
+          childName != null &&
+          item.date != null;
+
         batch.set(itemRef, {
           householdId,
           type: item.type || 'task',
-          status: 'pendingReview',
+          status: shouldAutoApprove ? 'confirmed' : 'pendingReview',
+          autoApproved: shouldAutoApprove || false,
           action,
           title: item.title || item.summary || 'Untitled',
           category: item.category || null,
@@ -246,7 +257,16 @@ exports.extractSourceMessage = onDocumentCreated(
       console.log(`Created ${extracted.length} items for message: ${messageId}`);
 
       // Send notification
-      await sendReviewNotification(householdId, extracted, messageId);
+      const autoApprovedCount = extracted.filter(i =>
+        householdData.autoApproval === true &&
+        i.overallConfidence === 'high' &&
+        (!i.uncertainFields || i.uncertainFields.length === 0) &&
+        (i.action || 'create') === 'create' &&
+        (i.type || 'task') !== 'deadline' &&
+        i.childName != null &&
+        i.date != null
+      ).length;
+      await sendReviewNotification(householdId, extracted, messageId, autoApprovedCount);
     } catch (error) {
       console.error('Extraction error:', error);
       await snapshot.ref.update({ processingStatus: 'failed', processedAt: Timestamp.now() });
@@ -314,6 +334,7 @@ Return a JSON array. Each item:
   "action": "create|update|cancel",
   "type": "event|task|deadline",
   "category": "A single lowercase word describing what this is about (e.g., basketball, swimming, dentist, school, school trip, birthday, payment, form, pickup, homework, dance, music, hiking, cinema). Choose the most specific and natural category.",
+  "overallConfidence": "high|medium|low — your overall confidence in this extraction. 'high' means all fields are clear and explicit in the source.",
   "title": "Short action-focused title (use existing item's title for update/cancel)",
   "targetItemTitle": "Title of existing item being changed (for update/cancel only, null for create)",
   "changes": { "fieldName": "new value" } (for update only, omit for create/cancel),
@@ -610,10 +631,11 @@ async function writeNotification(householdId, { type, title, body, itemId, sourc
 /**
  * Send notification after items are extracted.
  */
-async function sendReviewNotification(householdId, items, sourceMessageId) {
+async function sendReviewNotification(householdId, items, sourceMessageId, autoApprovedCount = 0) {
   const count = items.length;
   const first = items[0];
   const hasChange = items.some(i => i.action === 'update' || i.action === 'cancel');
+  const needsReviewCount = count - autoApprovedCount;
 
   let title, body, type;
   if (hasChange) {
@@ -623,6 +645,17 @@ async function sendReviewNotification(householdId, items, sourceMessageId) {
         : `${changeItem.title} changed`;
     body = changeItem.summary || 'Tap to review the change';
     type = 'change_detected';
+  } else if (needsReviewCount === 0 && autoApprovedCount > 0) {
+    // All items auto-approved
+    title = autoApprovedCount === 1
+        ? `${first.title} added`
+        : `${autoApprovedCount} items auto-confirmed`;
+    body = first.title || 'Added to your feed';
+    type = 'review_needed';
+  } else if (autoApprovedCount > 0 && needsReviewCount > 0) {
+    title = `${autoApprovedCount} confirmed, ${needsReviewCount} to review`;
+    body = first.title || 'New items extracted';
+    type = 'review_needed';
   } else {
     title = `${count} item${count > 1 ? 's' : ''} to review`;
     body = first.title || first.summary || 'New items extracted';
