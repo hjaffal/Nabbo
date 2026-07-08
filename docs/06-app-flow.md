@@ -162,6 +162,7 @@ The Feed is the main screen. It shows **all items** in chronological order, grou
 - **Weather widget** (top-right): emoji + temperature from OpenWeatherMap (by GPS)
 - Items grouped by day: "Needs Review", "Today", "Tomorrow", "Wed, 9 Jul", etc.
 - Each card shows: icon, title, child chip (photo or colored initial), owner chip, location, time, status badge
+- Tapping a child chip → opens **Child Week View** for that child (Mon–Sun of current week)
 - Tapping a pending item → opens **Review Detail** screen
 - Tapping a confirmed item → opens **Item Detail** screen
 - Recurring items expand into one card per occurrence (until endDate, or next 4 weeks if no end)
@@ -202,6 +203,31 @@ Opens when user taps a pending item in the Feed (either a source message card or
 ### After all items reviewed:
 - Source Message is no longer shown in Feed
 - Confirmed items appear in Feed under their date
+
+---
+
+## Child Week View Screen
+
+Opens when user taps a child chip on any feed card.
+
+### Parameters:
+- `householdId`, `childName`, optional `childId`, optional `childColor` (hex)
+
+### Layout:
+- **AppBar:** "[Child name]'s week" + colored accent bar using child's member color
+- **Body:** Vertical list of 7 days (Mon–Sun of current week)
+- Each day section:
+  - Date header: "Monday, 14 Jul" — bold if today, with purple dot indicator
+  - List of items for that child on that day
+  - If no items: "Nothing planned" in gray italic
+- **Item rows:** time (or "All day"), category color dot, title, location
+- Tap any item → opens Item Detail screen
+
+### Data:
+- Loads items from Firestore where `childName` matches + status in [confirmed, pendingReview]
+- Expands recurring items for the current week (daily, weekly, biweekly, monthly)
+- Respects `exceptions` (cancelled/hidden occurrences skipped)
+- Sorted by time within each day
 
 ---
 
@@ -344,6 +370,7 @@ Item has recurrence rule → Feed expands into multiple cards (one per occurrenc
 - **Feed** (main tab)
 - **Review** (tab)
 - Review Detail (per source message)
+- **Child Week View** (per child, from child chip tap)
 - **Item Detail** (per confirmed item)
 - **Edit Item**
 - **Settings** (tab)

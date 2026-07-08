@@ -25,6 +25,7 @@
 | Failed/noAction visibility | Shows with proper badges, tap to retry |
 | Item cards with category icons | AI-chosen icons (basketball, swimming, school, etc.) |
 | Child chips with photo/color | Shows member photo or colored initial |
+| Child chip → week view | Tapping child chip navigates to per-child week view (Mon–Sun) |
 | Location + time on cards | Inline with pin icon + time display |
 | Recurrence indicator | Repeat icon on recurring items |
 | Cancelled items visible | Shown with badge + strikethrough |
@@ -70,6 +71,17 @@
 | Approve/Edit/Delete actions | Per-item actions in review |
 | Change proposals UI | Blue for updates, coral for cancellations, shows field diffs |
 | Date required on approval | If item has no date, picker appears (defaults tomorrow 9:00) |
+
+### Per-Child Week View
+
+| Feature | Description |
+|---------|-------------|
+| Week view screen | Shows Mon–Sun for a specific child with all their items |
+| Recurrence expansion | Expands daily/weekly/biweekly/monthly rules for the week |
+| Respects exceptions | Skips cancelled/hidden occurrences |
+| Today indicator | Purple dot next to today's date header |
+| Entry from feed | Tap child chip on any feed card to navigate |
+| Tap to detail | Each item row navigates to ItemDetailScreen |
 
 ### Item Detail
 

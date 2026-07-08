@@ -22,6 +22,7 @@ import '../../notifications/presentation/notifications_screen.dart';
 import '../../activity/presentation/activity_feed_view.dart';
 import 'widgets/morning_brief_card.dart';
 import 'item_detail_screen.dart';
+import '../../child_week/presentation/child_week_screen.dart';
 
 final _householdProvider = FutureProvider<HouseholdModel?>((ref) async {
   final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -1174,6 +1175,7 @@ class _FeedCard extends StatelessWidget {
                             name: entry.childName!,
                             colorHex: memberInfo[entry.childName!.toLowerCase()]?.color,
                             photoUrl: memberInfo[entry.childName!.toLowerCase()]?.photoUrl,
+                            householdId: householdId,
                           ),
                           const SizedBox(width: 6),
                         ],
@@ -1267,44 +1269,61 @@ class _ChildChip extends StatelessWidget {
   final String name;
   final String? colorHex;
   final String? photoUrl;
-  const _ChildChip({required this.name, this.colorHex, this.photoUrl});
+  final String? householdId;
+  const _ChildChip({required this.name, this.colorHex, this.photoUrl, this.householdId});
 
   @override
   Widget build(BuildContext context) {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final color = MemberColors.fromHex(colorHex);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (photoUrl != null && photoUrl!.isNotEmpty)
-            CircleAvatar(
-              radius: 10,
-              backgroundImage: NetworkImage(photoUrl!),
-            )
-          else
-            CircleAvatar(
-              radius: 10,
-              backgroundColor: color,
-              child: Text(initial,
-                  style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-            ),
-          const SizedBox(width: 4),
-          Text(name,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color)),
-        ],
+    return GestureDetector(
+      onTap: householdId != null
+          ? () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChildWeekScreen(
+                    householdId: householdId!,
+                    childName: name,
+                    childColor: colorHex,
+                  ),
+                ),
+              );
+            }
+          : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (photoUrl != null && photoUrl!.isNotEmpty)
+              CircleAvatar(
+                radius: 10,
+                backgroundImage: NetworkImage(photoUrl!),
+              )
+            else
+              CircleAvatar(
+                radius: 10,
+                backgroundColor: color,
+                child: Text(initial,
+                    style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+              ),
+            const SizedBox(width: 4),
+            Text(name,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color)),
+          ],
+        ),
       ),
     );
   }
