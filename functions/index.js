@@ -39,6 +39,10 @@ exports.extractSourceMessage = onDocumentCreated(
 
     try {
       // Gather household context
+      const householdDoc = await db.collection('households').doc(householdId).get();
+      const householdData = householdDoc.data() || {};
+      const householdTimezone = householdData.timezone || 'Europe/Berlin';
+
       const membersSnapshot = await db
         .collection('households').doc(householdId).collection('members').get();
 
@@ -212,8 +216,8 @@ exports.extractSourceMessage = onDocumentCreated(
           childName,
           ownerId,
           ownerName,
-          date: item.date ? parseDate(item.date) : null,
-          endDate: item.endDate ? parseDate(item.endDate) : null,
+          date: item.date ? parseDate(item.date, householdTimezone) : null,
+          endDate: item.endDate ? parseDate(item.endDate, householdTimezone) : null,
           location: item.location || null,
           recurrence: item.recurrence || null,
           exceptions: [],
@@ -400,29 +404,29 @@ function findMatchingItem(existingItems, targetTitle, childName, type) {
 /**
  * Parse a date string into a Firestore Timestamp.
  * Handles ISO dates, relative dates, and date+time combinations.
+ * Times are treated as household local time and converted to UTC.
  */
-function parseDate(dateStr) {
+function parseDate(dateStr, timezone) {
   if (!dateStr) return null;
 
   try {
     const original = dateStr.trim();
     const lower = original.toLowerCase();
 
-    // 1. Try direct ISO parse (handles "2026-07-15", "2026-07-15T16:30:00", etc.)
+    // 1. Try direct ISO parse (already has timezone info)
     const isoParsed = new Date(original);
     if (!isNaN(isoParsed.getTime()) && /^\d{4}-\d{2}/.test(original)) {
       return Timestamp.fromDate(isoParsed);
     }
 
-    // 2. Extract time component if present (e.g., "at 4pm", "18:30", "at 16:00")
+    // 2. Extract time component if present
     let hours = null;
     let minutes = 0;
 
-    // Match patterns: "at 4pm", "at 16:00", "4pm", "18:30", "4 pm", "16h00"
     const timePatterns = [
-      /(?:at\s+)?(\d{1,2}):(\d{2})\s*(am|pm)?/i,         // 16:00, at 4:30pm, 4:30 pm
-      /(?:at\s+)?(\d{1,2})\s*(am|pm)/i,                   // 4pm, at 4 pm, 11am
-      /(?:at\s+)?(\d{1,2})h(\d{2})/i,                     // 16h00, 18h30
+      /(?:at\s+)?(\d{1,2}):(\d{2})\s*(am|pm)?/i,
+      /(?:at\s+)?(\d{1,2})\s*(am|pm)/i,
+      /(?:at\s+)?(\d{1,2})h(\d{2})/i,
     ];
 
     for (const pattern of timePatterns) {
@@ -454,13 +458,12 @@ function parseDate(dateStr) {
     } else if (lower.includes('tomorrow')) {
       targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     } else {
-      // Check for day-of-week: "monday", "next tuesday", "friday"
       const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const cleanedDay = lower.replace(/at\s+\d.*$/, '').replace('next ', '').trim();
 
       for (let i = 0; i < days.length; i++) {
         if (cleanedDay.includes(days[i])) {
-          const currentDay = now.getDay(); // 0=Sun
+          const currentDay = now.getDay();
           let diff = i - currentDay;
           if (diff <= 0) diff += 7;
           targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
@@ -469,15 +472,18 @@ function parseDate(dateStr) {
       }
     }
 
-    // 4. Combine date + time
+    // 4. Combine date + time, treating as household local time
     if (targetDate) {
       if (hours !== null) {
         targetDate.setHours(hours, minutes, 0, 0);
       }
-      return Timestamp.fromDate(targetDate);
+      // Convert from household local time to UTC
+      // Get the offset for the household timezone at this date
+      const utcDate = convertLocalToUTC(targetDate, timezone);
+      return Timestamp.fromDate(utcDate);
     }
 
-    // 5. Last resort: try Date constructor on the full string
+    // 5. Last resort
     const lastResort = new Date(original);
     if (!isNaN(lastResort.getTime())) {
       return Timestamp.fromDate(lastResort);
@@ -485,6 +491,35 @@ function parseDate(dateStr) {
   } catch (_) {}
 
   return null;
+}
+
+/**
+ * Convert a date (treated as local time in the given timezone) to UTC.
+ */
+function convertLocalToUTC(date, timezone) {
+  try {
+    // Use Intl to get the timezone offset
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    });
+
+    // Get what "now" looks like in the target timezone
+    const nowInTz = formatter.format(date);
+    // Parse it back to a date (this gives us the offset)
+    const tzDate = new Date(nowInTz);
+
+    // Calculate offset: difference between UTC and local representation
+    const offsetMs = date.getTime() - tzDate.getTime();
+
+    // Apply offset: if timezone is UTC+2, we need to subtract 2 hours to get UTC
+    return new Date(date.getTime() - offsetMs);
+  } catch (_) {
+    // Fallback: assume UTC+2 (Central European Summer Time)
+    return new Date(date.getTime() - 2 * 3600000);
+  }
 }
 
 /**

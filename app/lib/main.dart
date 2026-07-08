@@ -44,6 +44,16 @@ class NabboApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
 
+    // Wire up notification deep linking
+    PushNotificationService.onNotificationTap = (data) {
+      final type = data['type'] as String?;
+      if (type == 'review_needed' || type == 'change_detected') {
+        router.go('/today'); // Feed shows pending items at top
+      } else {
+        router.go('/today'); // All notifications lead to Feed for now
+      }
+    };
+
     return MaterialApp.router(
       title: 'Nabbo',
       debugShowCheckedModeBanner: false,

@@ -8,6 +8,7 @@ import '../../../core/theme/category_icons.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
 import '../../items/data/models/item_model.dart';
 import '../../items/data/repositories/item_repository.dart';
+import '../../review/presentation/review_detail_screen.dart';
 import 'edit_item_screen.dart';
 
 /// Full screen detail view for an item (event, task, deadline)
@@ -191,7 +192,31 @@ class ItemDetailScreen extends ConsumerWidget {
                 ),
               ),
             ],
+
+            // View original source
+            if (item.sourceMessageId != null) ...[
+              const SizedBox(height: AppSpacing.xl),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => _viewSource(context),
+                  icon: const Icon(Icons.article_outlined, size: 18),
+                  label: const Text('View original message'),
+                ),
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  void _viewSource(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReviewDetailScreen(
+          householdId: householdId,
+          sourceMessageId: item.sourceMessageId!,
         ),
       ),
     );

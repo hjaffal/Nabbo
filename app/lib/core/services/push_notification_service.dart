@@ -5,11 +5,16 @@ import 'package:flutter/foundation.dart';
 
 import '../logging/app_logger.dart';
 
-/// Handles FCM token registration and background message setup.
+/// Callback for handling notification taps (deep linking).
+/// Set this from the app's main widget to enable navigation.
+typedef NotificationTapCallback = void Function(Map<String, dynamic> data);
+
+/// Handles FCM token registration, background messages, and notification taps.
 class PushNotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  static NotificationTapCallback? onNotificationTap;
 
-  /// Initialize push notifications: request permissions, register token.
+  /// Initialize push notifications: request permissions, register token, handle taps.
   static Future<void> initialize() async {
     // Request permission (iOS requires explicit permission)
     final settings = await _messaging.requestPermission(
@@ -31,18 +36,35 @@ class PushNotificationService {
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+
+    // Handle notification tap when app was in background
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+    // Check if app was opened from a terminated state via notification
+    final initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      // Delay slightly to let the app finish building
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _handleNotificationTap(initialMessage);
+      });
+    }
   }
 
-  /// Get and store the FCM token in the user's household document.
+  /// Get and store the FCM token.
   static Future<void> _registerToken() async {
     try {
-      final token = await _messaging.getToken();
+      String? token;
+      if (kIsWeb) {
+        // Web requires VAPID key — skip if not configured
+        return;
+      } else {
+        token = await _messaging.getToken();
+      }
       if (token == null) return;
 
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) return;
 
-      // Store token under user document or household
       await FirebaseFirestore.instance
           .collection('userTokens')
           .doc(userId)
@@ -83,16 +105,20 @@ class PushNotificationService {
       'body': message.notification?.body,
       'data': message.data,
     });
+    // Foreground messages update the badge via Firestore stream (automatic)
+  }
 
-    // TODO: Show in-app notification banner or navigate to relevant screen
+  /// Handle notification tap (app was in background or terminated).
+  static void _handleNotificationTap(RemoteMessage message) {
+    AppLogger.info('Notification tapped', data: {'data': message.data});
+    if (onNotificationTap != null) {
+      onNotificationTap!(message.data);
+    }
   }
 
   /// Subscribe to household topic for group notifications.
   static Future<void> subscribeToHousehold(String householdId) async {
     await _messaging.subscribeToTopic('household_$householdId');
-    AppLogger.info('Subscribed to household topic', data: {
-      'householdId': householdId,
-    });
   }
 
   /// Unsubscribe from household topic.
@@ -104,6 +130,5 @@ class PushNotificationService {
 /// Top-level background message handler (must be top-level function).
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Handle background messages (e.g., update badge count)
   debugPrint('Background message: ${message.notification?.title}');
 }
