@@ -72,6 +72,7 @@ class FeedEntry {
   final ItemModel? item;
   final bool isSource;
   final bool isRecurring;
+  final bool autoApproved;
   final DateTime? occurrenceDate; // specific date for recurring occurrences
 
   FeedEntry({
@@ -90,6 +91,7 @@ class FeedEntry {
     this.item,
     this.isSource = false,
     this.isRecurring = false,
+    this.autoApproved = false,
     this.occurrenceDate,
   });
 
@@ -587,6 +589,7 @@ class _FeedContent extends StatelessWidget {
       sourceMessageId: item.sourceMessageId,
       item: item,
       isRecurring: item.recurrence != null,
+      autoApproved: item.autoApproved,
     );
   }
 
@@ -933,7 +936,18 @@ class _FeedCard extends StatelessWidget {
 
             // Status badge
             const SizedBox(width: 8),
-            _StatusBadge(entry: entry),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _StatusBadge(entry: entry),
+                if (entry.autoApproved)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text('✨ Auto',
+                        style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
