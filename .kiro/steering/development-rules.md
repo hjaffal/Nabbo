@@ -2,22 +2,25 @@
 
 ## Source of Truth
 
-The following documents are the source of truth for Nabbo's product and technical requirements:
+The following documents are the source of truth for Nabbo's product and technical requirements. They are stored locally (not in git) at the workspace path `/Users/hjaffal/Desktop/My Notes/Jaf/Personal/nabboapp/`:
 
-- `docs/02-product-requirements.md` — Product Requirements (v1 scope)
-- `docs/03-product-loop.md` — Core Product Loop
-- `docs/04-data-model.md` — Core Data Model (2 collections + household + members)
-- `docs/05-ai-extraction.md` — AI Extraction Specification (prompt, change detection, multimodal)
-- `docs/06-app-flow.md` — App Flow & Screen Map
-- `docs/07-review-card.md` — Review Card Spec
-- `docs/08-feed.md` — Feed Spec
-- `docs/09-notification-strategy.md` — Notification Strategy
-- `docs/10-technical-architecture.md` — Technical Architecture
-- `docs/11-layouts-specs.md` — Layout Specifications (UI component designs)
-- `docs/13-household-intelligence.md` — Household Intelligence Layer (pattern learning, child inference)
-- `docs/14-item-categories-icons.md` — Item Categories & Icons (AI-chosen, visual mapping)
-- `docs/15-feature-list.md` — Feature List (implemented + remaining)
-- `docs/16-auto-approval.md` — Auto-Approval Design (confidence-based skip review)
+- `02-product-requirements.md` — Product Requirements (v1 scope)
+- `03-product-loop.md` — Core Product Loop
+- `04-data-model.md` — Core Data Model (2 collections + household + members)
+- `05-ai-extraction.md` — AI Extraction Specification (prompt, change detection, multimodal)
+- `06-app-flow.md` — App Flow & Screen Map
+- `07-review-card.md` — Review Card Spec
+- `08-feed.md` — Feed Spec
+- `09-notification-strategy.md` — Notification Strategy
+- `10-technical-architecture.md` — Technical Architecture
+- `11-layouts-specs.md` — Layout Specifications (UI component designs)
+- `13-household-intelligence.md` — Household Intelligence Layer (pattern learning, child inference)
+- `14-item-categories-icons.md` — Item Categories & Icons (AI-chosen, visual mapping)
+- `15-feature-list.md` — Feature List (implemented + remaining)
+- `16-auto-approval.md` — Auto-Approval Design (confidence-based skip review)
+- `17-product-roadmap.md` — Product Roadmap
+- `18-family-activity-feed.md` — Family Activity Feed Spec
+- `19-discovery-engine.md` — Discovery Engine Spec
 
 ## Rules
 
