@@ -1,0 +1,24 @@
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo">nabbo</a>
+        <div class="nav-links">
+            <a href="/features">Features</a>
+            <a href="/kb">Help</a>
+            <a href="/#download" class="nav-cta">Download</a>
+        </div>
+        <button class="menu-toggle" onclick="document.getElementById('mobileMenu').classList.add('open')" aria-label="Open menu">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+    </div>
+</nav>
+
+<!-- Mobile menu overlay -->
+<div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-menu-close" onclick="document.getElementById('mobileMenu').classList.remove('open')" aria-label="Close menu">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <a href="/" onclick="document.getElementById('mobileMenu').classList.remove('open')">Home</a>
+    <a href="/features" onclick="document.getElementById('mobileMenu').classList.remove('open')">Features</a>
+    <a href="/kb" onclick="document.getElementById('mobileMenu').classList.remove('open')">Help</a>
+    <a href="/#download" class="nav-cta" onclick="document.getElementById('mobileMenu').classList.remove('open')">Download</a>
+</div>

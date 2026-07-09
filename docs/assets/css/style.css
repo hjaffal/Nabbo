@@ -65,7 +65,7 @@ nav {
 
 .nav-cta {
     background: var(--primary);
-    color: white;
+    color: white !important;
     padding: 10px 24px;
     border-radius: 50px;
     text-decoration: none;
@@ -77,6 +77,90 @@ nav {
 .nav-cta:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 20px rgba(108, 92, 231, 0.3);
+    color: white !important;
+}
+
+/* Nav links */
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+.nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: color 0.2s;
+}
+.nav-links a:hover {
+    color: var(--primary);
+}
+.nav-links .nav-cta {
+    color: white !important;
+}
+
+/* Hamburger button */
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+}
+.menu-toggle svg {
+    width: 24px;
+    height: 24px;
+    color: var(--text-primary);
+}
+
+/* Mobile menu overlay */
+.mobile-menu {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+}
+.mobile-menu.open {
+    display: flex;
+}
+.mobile-menu a {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.mobile-menu a:hover {
+    color: var(--primary);
+}
+.mobile-menu .nav-cta {
+    margin-top: 16px;
+    font-size: 16px;
+    color: white !important;
+}
+.mobile-menu-close {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+}
+.mobile-menu-close svg {
+    width: 28px;
+    height: 28px;
+    color: var(--text-primary);
 }
 
 /* ===== Buttons ===== */
@@ -458,6 +542,13 @@ footer a:hover {
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+    .menu-toggle {
+        display: block;
+    }
+
     .hero {
         padding: 120px 20px 60px;
     }

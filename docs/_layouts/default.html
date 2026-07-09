@@ -1,145 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ page.title | default: site.title }} — Nabbo</title>
-    <meta name="description" content="{{ page.description | default: site.description }}">
-    <meta name="theme-color" content="#6C5CE7">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    {% if page.extra_css %}<link rel="stylesheet" href="{{ page.extra_css }}">{% endif %}
-    <style>
-        /* Nav links (desktop) */
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 28px;
-        }
-        .nav-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 14px;
-            transition: color 0.2s;
-        }
-        .nav-links a:hover {
-            color: var(--primary);
-        }
-
-        /* Hamburger button */
-        .menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 8px;
-        }
-        .menu-toggle svg {
-            width: 24px;
-            height: 24px;
-            color: var(--text-primary);
-        }
-
-        /* Mobile menu overlay */
-        .mobile-menu {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 200;
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(20px);
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 32px;
-        }
-        .mobile-menu.open {
-            display: flex;
-        }
-        .mobile-menu a {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--text-primary);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        .mobile-menu a:hover {
-            color: var(--primary);
-        }
-        .mobile-menu .nav-cta {
-            margin-top: 16px;
-            font-size: 16px;
-        }
-        .mobile-menu-close {
-            position: absolute;
-            top: 20px;
-            right: 24px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 8px;
-        }
-        .mobile-menu-close svg {
-            width: 28px;
-            height: 28px;
-            color: var(--text-primary);
-        }
-
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-            .menu-toggle {
-                display: block;
-            }
-        }
-    </style>
+    {% include head.html %}
 </head>
 <body>
-    <nav>
-        <div class="nav-inner">
-            <a href="/" class="logo">nabbo</a>
-            <div class="nav-links">
-                <a href="/features">Features</a>
-                <a href="/kb">Help</a>
-                <a href="/privacy">Privacy</a>
-                <a href="/#download" class="nav-cta">Download</a>
-            </div>
-            <button class="menu-toggle" onclick="document.getElementById('mobileMenu').classList.add('open')" aria-label="Open menu">
-                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-            </button>
-        </div>
-    </nav>
+    {% include navbar.html %}
 
-    <!-- Mobile menu overlay -->
-    <div class="mobile-menu" id="mobileMenu">
-        <button class="mobile-menu-close" onclick="document.getElementById('mobileMenu').classList.remove('open')" aria-label="Close menu">
-            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-        <a href="/" onclick="document.getElementById('mobileMenu').classList.remove('open')">Home</a>
-        <a href="/features" onclick="document.getElementById('mobileMenu').classList.remove('open')">Features</a>
-        <a href="/kb" onclick="document.getElementById('mobileMenu').classList.remove('open')">Help</a>
-        <a href="/privacy" onclick="document.getElementById('mobileMenu').classList.remove('open')">Privacy</a>
-        <a href="/terms" onclick="document.getElementById('mobileMenu').classList.remove('open')">Terms</a>
-        <a href="/#download" class="nav-cta" onclick="document.getElementById('mobileMenu').classList.remove('open')">Download</a>
-    </div>
+    <main>
+        {{ content }}
+    </main>
 
-    {{ content }}
-
-    <footer>
-        <div class="footer-links">
-            <a href="/privacy">Privacy Policy</a>
-            <a href="/terms">Terms of Service</a>
-            <a href="/kb">Knowledge Base</a>
-            <a href="mailto:support@nabboapp.com">Support</a>
-        </div>
-        <p>&copy; 2025 Nabbo. All rights reserved.</p>
-    </footer>
+    {% include footer.html %}
 </body>
 </html>
