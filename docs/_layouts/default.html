@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.title | default: site.title }} — Nabbo</title>
+    <meta name="description" content="{{ page.description | default: site.description }}">
+    <meta name="theme-color" content="#6C5CE7">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    {% if page.extra_css %}<link rel="stylesheet" href="{{ page.extra_css }}">{% endif %}
+</head>
+<body>
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="logo">nabbo</a>
+            <a href="/#download" class="nav-cta">Download</a>
+        </div>
+    </nav>
+
+    {{ content }}
+
+    <footer>
+        <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/kb">Knowledge Base</a>
+            <a href="mailto:support@nabboapp.com">Support</a>
+        </div>
+        <p>&copy; 2025 Nabbo. All rights reserved.</p>
+    </footer>
+</body>
+</html>

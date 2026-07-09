@@ -1,0 +1,41 @@
+title: Nabbo
+description: AI-enabled Family Logistics
+url: "https://nabboapp.com"
+baseurl: ""
+theme: null
+plugins: []
+
+# Exclude spec docs from being processed as pages
+exclude:
+  - "01-*.md"
+  - "02-*.md"
+  - "03-*.md"
+  - "04-*.md"
+  - "05-*.md"
+  - "06-*.md"
+  - "07-*.md"
+  - "08-*.md"
+  - "09-*.md"
+  - "10-*.md"
+  - "11-*.md"
+  - "12-*.md"
+  - "13-*.md"
+  - "14-*.md"
+  - "15-*.md"
+  - "16-*.md"
+  - "17-*.md"
+  - "18-*.md"
+  - README.md
+
+# Collections for knowledge base
+collections:
+  kb:
+    output: true
+    permalink: /kb/:title/
+
+defaults:
+  - scope:
+      path: ""
+      type: "kb"
+    values:
+      layout: "kb-article"

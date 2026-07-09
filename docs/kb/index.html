@@ -1,0 +1,17 @@
+---
+layout: default
+title: Knowledge Base
+description: Help articles and guides for Nabbo
+---
+<div class="kb-index">
+    <h1>Knowledge Base</h1>
+    <p class="subtitle">Help, guides, and tips for getting the most from Nabbo.</p>
+    <div class="kb-grid">
+        {% for article in site.kb %}
+        <a href="{{ article.url }}" class="kb-card">
+            <h3>{{ article.title }}</h3>
+            <p>{{ article.excerpt | strip_html | truncate: 100 }}</p>
+        </a>
+        {% endfor %}
+    </div>
+</div>

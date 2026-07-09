@@ -2,148 +2,186 @@
 
 ## Purpose
 
-This roadmap defines what comes after v1 launch. The goal is to take Nabbo from a useful utility to an indispensable daily habit — something parents feel uneasy without.
-
-Each phase has a theme. Features are grouped by the feeling they create, not just technical category.
+Take Nabbo from a useful tool to something parents open instinctively — a daily companion they'd feel lost without. Every feature below exists to answer one question: **"Why would a parent come back tomorrow?"**
 
 ---
 
-## Phase 1: Make It Alive (Daily Pull)
+## What's Already Shipped ✅
 
-**Theme:** Give parents a reason to open Nabbo every morning without being asked.
+- Morning Brief card (daily summary at top of feed)
+- Family Activity Feed (household timeline)
+- Per-child Week View (tap child → see their week)
+- Animated transitions (staggered card entrance, styled SnackBars)
+- Contextual illustrations (warm empty states)
+- Ambiguity picker ("Who is this about?" in review)
+- Pull-to-refresh everywhere
+- Cupertino date picker
+
+---
+
+## Phase 1: Daily Rituals (Habit Formation)
+
+**Problem:** Parents open Nabbo when they remember, not automatically. No ritual.
+
+**Goal:** Create a calm daily rhythm that feels rewarding.
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 1.1 | Morning Brief card | Medium | Beautiful summary card at 7:30am in Feed: "Today: Adam has football (bring jersey). Yara's €5 due. No owner for pickup." Uses existing `dailyBrief` cloud function output. |
-| 1.2 | Week Ahead preview | Medium | Sunday evening card: "This week: 3 events, 1 payment, 2 forms." Gives a sense of control. Shown in Feed as a special card type. |
-| 1.3 | Calm indicator / streak | Small | Non-gamified pulse: "All handled this week ✓" or "2 things need attention." Subtle badge or card in Feed header. Not a score — a feeling. |
-| 1.4 | Smart empty states | Small | Contextual prompts when Feed is empty: "Forward a school email," "Share a WhatsApp message," "Speak a reminder." Rotating, helpful, not annoying. |
+| 1.1 | Calm indicator | Small | "All handled ✓" pulse in feed header when nothing needs attention. Emotional reward for being on top of things. |
+| 1.2 | Streak glow | Small | Subtle visual glow on feed header after 3+ consecutive days of opening. Not a number — a feeling. |
 
-**Success signal:** Parents open Nabbo in the morning before checking WhatsApp.
+**Retention mechanism:** Parents feel good when they see "all clear" — builds daily check habit.
 
 ---
 
-## Phase 2: Make It Smart (AI Wow Moments)
+## Phase 2: Proactive Intelligence (AI Surprises)
 
-**Theme:** Nabbo remembers what you forget. It catches problems before they happen.
+**Problem:** App only reacts to input. Parents stop feeding it once novelty fades.
+
+**Goal:** Nabbo reaches out first. It notices things before you do.
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 2.1 | Packing assistant | Medium | Before an event, auto-generate a "Pack for football" checklist from learned associations (jersey, water, ball). The magic "it remembered" moment. |
-| 2.2 | Conflict detection | Medium | "Adam has basketball AND dentist at the same time Thursday." Flag scheduling conflicts automatically. Alert in Feed + notification. |
-| 2.3 | Prep time nudge | Small | "Football at 18:30. Leave by 17:50." Simple travel-time estimate per activity. Stored per location, not full Maps routing. Shown on item card. |
-| 2.4 | "You usually..." suggestions | Small | "Last 3 times, you handled school payment. Assign to you?" Ownership suggestions based on historical patterns. Shown as gentle prompt on unassigned items. |
-| 2.5 | "What's missing?" intelligence | Medium | "Football is tomorrow but no one owns 'pick up Adam.' Assign?" Proactive gap detection. Creates risk-like alerts but framed as helpful nudges. |
+| 2.1 | Conflict detection | Medium | "Adam has football AND dentist Thursday at 16:00." Catches real scheduling problems. |
+| 2.2 | "What's missing?" nudges | Medium | "Football tomorrow — no one owns 'pick up Adam.' Assign?" Proactive gap alerts. |
+| 2.3 | Prep time nudge | Small | "Football at 18:30. Leave by 17:50." Shows on item card morning of. |
+| 2.4 | Smart suggestions | Small | "Last 3 times, you handled school payment. Assign to you?" Pattern-based ownership hints. |
 
-**Success signal:** Parent says "How did it know I needed that?" at least once per week.
+**Retention mechanism:** Parents keep the app because it surprises them with useful insights they didn't ask for.
 
 ---
 
-## Phase 3: Make It Shared (Household Feel)
+## Phase 3: Social & Sharing (Growth Loop)
 
-**Theme:** Both parents feel like they're operating together, even if only one uses the app heavily.
+**Problem:** Only one parent uses the app. No viral moment. No shared responsibility feeling.
+
+**Goal:** Make Nabbo shareable. Create reasons for the second parent to engage.
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 3.1 | Family activity feed | Medium | Timeline showing: "Dad approved football" / "Mum forwarded newsletter" / "3 items from school email." Shared visibility without full multi-user auth. |
-| 3.2 | Quick delegate | Small | From any item: "Send to [partner]" — sends a push/SMS/WhatsApp link with a quick summary. Lightweight nudge, no account required for recipient. |
-| 3.3 | Per-child week view | Medium | Tap a child → see their week: football Tue, dentist Thu, trip Fri. Parents think in "what does Adam have this week?" — serve that directly. |
-| 3.4 | Shared link preview | Medium | When sharing an item externally, generate a pretty card: "Adam: football Fri 18:30, bring jersey, no owner." Works over messaging apps without app install. |
+| 3.1 | Quick delegate | Small | "Send to [partner]" — generates a WhatsApp/SMS message with item summary. No account needed for recipient. |
+| 3.2 | Shared link preview cards | Medium | Beautiful OG cards when sharing items externally. Recipients see value without installing. |
+| 3.3 | "Assigned to you" notifications | Small | Push notification when item assigned: "Hassan assigned you: Pick up Adam at 15:30." |
+| 3.4 | Multi-user households | Large | Second parent gets their own login + notifications. Full shared experience. |
 
-**Success signal:** Second parent starts checking Nabbo or receiving useful delegations.
+**Retention mechanism:** Both parents engage. Social accountability keeps them coming back.
 
 ---
 
-## Phase 4: Make It Delightful (Feel & Polish)
+## Phase 4: Depth & Richness (Power User Value)
 
-**Theme:** Small moments of delight that make the app feel premium and alive.
+**Problem:** Power users hit a ceiling. The app feels "done" after 2 weeks.
+
+**Goal:** Reward continued use with features that compound over time.
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 4.1 | Animated transitions | Medium | Approved items animate "flying" from review to feed. Completions fade with a check. Deadlines pulse gently when approaching. Subtle motion = alive. |
-| 4.2 | Celebratory moments | Small | "Week complete — 0 missed deadlines 🎉" Friday evening. Not over-the-top. A small reward for staying on top of things. |
-| 4.3 | Quick-capture home widget | Large | iOS/Android home screen widget: one tap → voice capture. Removes friction entirely. Deep OS integration needed. |
-| 4.4 | Contextual illustrations | Small | Custom empty state illustrations per section. Feed empty → family relaxing. Review empty → checkmark garden. Warm, branded, not generic. |
+| 4.1 | Calendar sync (ICS export) | Large | Confirmed events push to Google/Apple Calendar. Nabbo becomes the input layer. |
+| 4.2 | Recurring checklists | Medium | "Every football → pack: jersey, water, ball." Templates that auto-attach. |
+| 4.3 | Monthly family report | Small | "June: 47 items handled, 3 missed deadlines, most active day: Tuesday." |
+| 4.4 | History & search | Medium | Search past items, filter by child/type/date. "When was Adam's last dentist?" |
+| 4.5 | Item templates | Small | "Create football training" as a one-tap recurring template. Power user shortcut. |
 
-**Success signal:** Users screenshot and share the app with friends because it "feels nice."
+**Retention mechanism:** The longer you use Nabbo, the smarter and more useful it becomes.
 
 ---
 
-## Phase 5: Make It Indispensable (Can't Live Without)
+## Phase 5: Emotional Connection (Love, Not Just Use)
 
-**Theme:** Nabbo becomes the operating system for the household — removing it would be unthinkable.
+**Problem:** The app works but doesn't feel personal. No emotional attachment.
+
+**Goal:** Make parents feel that Nabbo "gets" their family.
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 5.1 | Calendar export (ICS sync) | Large | Auto-sync confirmed events to Google/Apple Calendar. Nabbo becomes the *input layer* — parents keep their calendar but Nabbo feeds it. |
-| 5.2 | Per-child calendar view | Medium | Visual calendar grid showing one child's items by day/week. Full visual picture of a child's schedule. |
-| 5.3 | Recurring checklists | Medium | "Every football → pack: jersey, water, ball." Templates that auto-attach to recurring events. Editable, learnable. |
-| 5.4 | Multi-user households | Large | Second parent gets their own login, sees same household data, gets their own notifications. Full shared-state experience. |
-| 5.5 | Notification deep-linking | Small | Every notification opens the exact item/review card. Already partially built — needs proper routing for all notification types. |
-| 5.6 | Data export (PDF/CSV) | Small | Export items, events, schedules as PDF or CSV. Peace of mind that data isn't trapped. |
-| 5.7 | AI conversation | Large | "What does Adam have tomorrow?" / "When is the school trip?" Natural language queries over household data. |
+| 5.1 | Celebratory moments | Small | "Week complete — 0 missed deadlines 🎉" Friday card. Micro-celebrations. |
+| 5.2 | Family milestones | Small | "Adam's first school year: 142 events managed." Annual summaries. |
+| 5.3 | Seasonal awareness | Small | "School starts in 2 weeks. Last year you had 12 items in the first week." Context-aware prompts. |
+| 5.4 | Personalized tips | Small | "Tip: You usually forget swimming goggles. Nabbo will remind you morning before." |
+| 5.5 | Custom themes | Small | Choose purple, teal, or coral as primary. Personalization creates ownership. |
+| 5.6 | Child avatars & emoji | Small | Kids get fun emoji: "Adam 🏀" / "Yara 🎨". Personality in the UI. |
 
-**Success signal:** Parent says "I can't imagine managing the family without Nabbo."
-
----
-
-## Priority Matrix
-
-### Immediate (next 2-4 weeks)
-
-| Feature | Rationale |
-|---------|-----------|
-| Morning Brief card (1.1) | Highest impact on daily retention. Function already exists. |
-| Per-child week view (3.3) | Matches natural parent thinking. High perceived value. |
-| Smart empty states (1.4) | Low effort, improves first-time experience immediately. |
-| Calm indicator (1.3) | Low effort, adds emotional pull. |
-
-### Short-term (1-2 months)
-
-| Feature | Rationale |
-|---------|-----------|
-| Packing assistant (2.1) | The "wow" moment. Differentiates from calendar apps. |
-| Conflict detection (2.2) | Catches real problems. High trust-building value. |
-| Week Ahead preview (1.2) | Creates weekly habit loop. |
-| Quick delegate (3.2) | Low effort gateway to multi-user without building auth. |
-
-### Medium-term (2-4 months)
-
-| Feature | Rationale |
-|---------|-----------|
-| Calendar export (5.1) | Makes Nabbo the permanent input layer. Hard to leave. |
-| Animated transitions (4.1) | Polish pass. Makes everything feel premium. |
-| Shared link preview (3.4) | Organic growth — recipients see Nabbo's value. |
-| Prep time nudge (2.3) | Simple but feels magical. |
-
-### Long-term (4-6 months)
-
-| Feature | Rationale |
-|---------|-----------|
-| Multi-user households (5.4) | Full shared experience. Retention multiplier. |
-| Quick-capture widget (4.3) | Deep OS integration, high friction reduction. |
-| AI conversation (5.7) | Natural language over family data. Moonshot value. |
-| Recurring checklists (5.3) | Compound value — gets better every week. |
+**Retention mechanism:** Emotional attachment. Deleting it would feel like losing a diary.
 
 ---
 
-## Metrics Per Phase
+## Phase 6: Discovery Engine ("Get Me Something to Do")
 
-| Phase | Key Metric | Target |
-|-------|-----------|--------|
-| 1. Alive | Daily opens (morning) | ≥ 60% of active users open before 9am |
-| 2. Smart | "Surprised by AI" moments per week | ≥ 1 per active household |
-| 3. Shared | Items delegated or viewed by second parent | ≥ 3 per week |
-| 4. Delightful | NPS / app store rating | ≥ 4.7 stars |
-| 5. Indispensable | Weekly retention at month 3 | ≥ 70% |
+**Problem:** Weekends and holidays are empty. Parents want ideas, not just logistics.
+
+**Goal:** Nabbo proactively suggests family activities by crawling local events, nearby attractions, and seasonal opportunities.
+
+| # | Feature | Effort | Description |
+|---|---------|--------|-------------|
+| 6.1 | "Get me something to do" button | Large | Parent taps → Nabbo recommends 3-5 local events/activities based on family ages, location, and interests. |
+| 6.2 | Local event crawling | Large | Scrape/aggregate local event sites, community boards, and family activity platforms for the family's area. |
+| 6.3 | Weekend suggestions card | Medium | Friday card: "This weekend near you: Science Museum free entry, Park festival Sat, Kids cinema €5." |
+| 6.4 | Holiday planner | Medium | "School holiday in 3 weeks. Here are 5 ideas based on what your family enjoys." |
+| 6.5 | Interest learning | Medium | Learn from approved activities what the family likes (outdoor, sports, arts, educational) → better suggestions over time. |
+| 6.6 | One-tap add | Small | Tap a suggested event → instantly creates an item in Nabbo with date, location, details pre-filled. |
+
+**Retention mechanism:** Nabbo isn't just a logistics tool — it's a family life assistant that gives you ideas. Parents open it on boring Saturdays.
+
+*Scope TBD — will detail in a separate spec when ready to build.*
+
+---
+
+## Priority: What to Build Next
+
+### Now (next 2 weeks)
+
+| # | Feature | Rationale |
+|---|---------|-----------|
+| 1.1 | Calm indicator | Low effort emotional pull. Daily reward. |
+| 2.1 | Conflict detection | High trust value. "It caught something I missed." |
+| 5.1 | Celebratory moments | Low effort, high emotional value. |
+
+### Next (2-6 weeks)
+
+| # | Feature | Rationale |
+|---|---------|-----------|
+| 2.2 | "What's missing?" nudges | Proactive. Makes parents feel supported. |
+| 3.1 | Quick delegate | Gateway to second parent. |
+| 2.3 | Prep time nudge | Simple magic. Morning delight. |
+
+### Then (1-3 months)
+
+| # | Feature | Rationale |
+|---|---------|-----------|
+| 4.1 | Calendar sync | Lock-in. Can't live without it. |
+| 4.2 | Recurring checklists | Compound value. |
+| 3.4 | Multi-user | Full shared experience. |
+
+### Future (3-6 months)
+
+| # | Feature | Rationale |
+|---|---------|-----------|
+| 6.1-6.6 | Discovery Engine | Game-changer. Nabbo becomes a lifestyle app, not just logistics. |
+| 4.4 | History & search | Power user depth. |
+| 5.2 | Family milestones | Long-term emotional bond. |
+
+---
+
+## Anti-Boredom Strategy
+
+| Problem | Solution | Feature |
+|---------|----------|---------|
+| App only speaks when spoken to | Proactively surface insights | Conflict detection, nudges, prep time |
+| No reason to open when nothing's pending | Calm indicator rewards "all clear" | Calm indicator, streak glow |
+| Same utility every day | Suggest new things to do | Discovery Engine |
+| Only one parent engaged | Make sharing effortless | Quick delegate, assigned notifications |
+| Novelty wears off | Features that improve with time | Checklists, suggestions, interest learning |
+| No emotional connection | Celebrate progress, personalize | Milestones, celebrations, themes |
+| Weekends/holidays are dead zones | Suggest activities near you | Weekend card, holiday planner |
 
 ---
 
 ## Principles
 
-1. **Every feature must reduce mental load** — if it adds work, it's wrong
-2. **Smart, not creepy** — infer from patterns, never track or surveil
-3. **Works for one parent first** — multi-user is a multiplier, not a prerequisite
-4. **Delight is not decoration** — animations and celebrations reinforce the habit loop
-5. **The calendar is not the goal** — Nabbo is action-first, not schedule-first
-6. **Growth through sharing** — make it easy to show Nabbo's value to others
+1. **Proactive > Reactive** — The best feature is one the parent didn't have to ask for
+2. **Rituals > Features** — Create daily moments, not just tools
+3. **Compound value** — Every week of use should make Nabbo slightly more useful
+4. **Social by default** — Make it easy to show value to others
+5. **Emotional, not transactional** — The app should feel like it cares about your family
+6. **Discovery, not just logistics** — Help families live better, not just organize better
+7. **Smart, not creepy** — Infer from patterns, never surveil
