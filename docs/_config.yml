@@ -1,19 +1,33 @@
 title: Nabbo
-description: AI-enabled Family Logistics
+description: "AI-enabled Family Logistics — Turn school emails, WhatsApp messages, and voice notes into clear family actions."
 url: "https://nabboapp.com"
 baseurl: ""
 theme: null
-plugins: []
+plugins:
+  - jekyll-sitemap
+  - jekyll-seo-tag
 
 # Exclude non-website files from processing
 exclude:
   - README.md
 
-# Collections for knowledge base
+# Collections
 collections:
   kb:
     output: true
     permalink: /kb/:title/
+  posts:
+    output: true
+    permalink: /blog/:title/
+
+# SEO defaults
+author: Nabbo
+twitter:
+  card: summary_large_image
+social:
+  name: Nabbo
+  links:
+    - https://nabboapp.com
 
 defaults:
   - scope:
@@ -21,3 +35,12 @@ defaults:
       type: "kb"
     values:
       layout: "kb-article"
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+  - scope:
+      path: ""
+    values:
+      image: /assets/images/iPhone-6-9-V02-00.png

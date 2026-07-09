@@ -1,0 +1,23 @@
+---
+layout: default
+---
+<article class="blog-post">
+    <a href="/blog" class="back-link">← Back to Blog</a>
+    <h1>{{ page.title }}</h1>
+    <div class="post-meta">
+        <time>{{ page.date | date: "%B %d, %Y" }}</time>
+        {% if page.read_time %}<span> · {{ page.read_time }} min read</span>{% endif %}
+    </div>
+    {% if page.image %}
+    <img src="{{ page.image }}" alt="{{ page.title }}" class="post-hero-image">
+    {% endif %}
+    <div class="post-content">
+        {{ content }}
+    </div>
+    <div class="post-cta">
+        <h3>Ready to try Nabbo?</h3>
+        <p>Stop remembering. Start Nabbo-ing.</p>
+        <a href="https://apps.apple.com/app/nabbo" class="btn-primary">Download for iOS</a>
+        <a href="https://play.google.com/store/apps/details?id=com.nabbo.app" class="btn-secondary">Download for Android</a>
+    </div>
+</article>

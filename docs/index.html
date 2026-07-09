@@ -28,20 +28,7 @@ description: "Nabbo turns your family's messy messages, emails, and notes into c
     <!-- Phone mockup -->
     <div class="hero-visual">
         <div class="phone-mockup">
-            <div class="phone-screen">
-                <div class="demo-message">
-                    <div class="source">📧 School email — 2 min ago</div>
-                    "Year 3 trip to Science Museum on Friday 14th. Depart 9am, return 3:30pm. Packed lunch needed. £5 contribution by Wednesday. Permission slip attached."
-                </div>
-                <div class="demo-extracted">
-                    <div class="label">Nabbo extracted</div>
-                    <div class="item"><span class="dot"></span> 📅 School trip — Fri 14th, 9am–3:30pm</div>
-                    <div class="item"><span class="dot"></span> 📍 Science Museum</div>
-                    <div class="item"><span class="dot"></span> 🎒 Packed lunch needed</div>
-                    <div class="item"><span class="dot"></span> 💷 £5 due Wednesday</div>
-                    <div class="item"><span class="dot"></span> 📝 Permission slip to sign</div>
-                </div>
-            </div>
+            <img src="/assets/images/iPhone-6-9-V02-00.png" alt="Nabbo app showing AI-extracted family events" style="width:100%; border-radius:30px;">
         </div>
     </div>
 </section>
@@ -102,6 +89,41 @@ description: "Nabbo turns your family's messy messages, emails, and notes into c
             <h4>🔔 Smart reminders</h4>
             <p>Deadline approaching, payment due, permission slip not signed — Nabbo nudges you at the right time.</p>
         </div>
+    </div>
+</section>
+
+<!-- Screenshots gallery -->
+<section style="padding: 60px 24px; max-width: 1200px; margin: 0 auto;">
+    <div class="section-header">
+        <h2>See it in action</h2>
+        <p>Real screenshots from the Nabbo app.</p>
+    </div>
+    <div style="display: flex; gap: 16px; overflow-x: auto; padding-bottom: 20px; scroll-snap-type: x mandatory;">
+        <img src="/assets/images/iPhone-6-9-V02-02.png" alt="Nabbo AI extraction" style="height: 400px; border-radius: 20px; scroll-snap-align: start; flex-shrink: 0;">
+        <img src="/assets/images/iPhone-6-9-V02-04.png" alt="Nabbo morning brief" style="height: 400px; border-radius: 20px; scroll-snap-align: start; flex-shrink: 0;">
+        <img src="/assets/images/iPhone-6-9-V02-06.png" alt="Nabbo activity feed" style="height: 400px; border-radius: 20px; scroll-snap-align: start; flex-shrink: 0;">
+        <img src="/assets/images/iPhone-6-9-V02-08.png" alt="Nabbo child week view" style="height: 400px; border-radius: 20px; scroll-snap-align: start; flex-shrink: 0;">
+        <img src="/assets/images/iPhone-6-9-V02-10.png" alt="Nabbo settings" style="height: 400px; border-radius: 20px; scroll-snap-align: start; flex-shrink: 0;">
+    </div>
+</section>
+
+<!-- Latest blog posts -->
+<section style="padding: 60px 24px; max-width: 1200px; margin: 0 auto;">
+    <div class="section-header">
+        <h2>From the blog</h2>
+        <p>Tips for busy parents managing family life.</p>
+    </div>
+    <div class="blog-grid">
+        {% for post in site.posts limit:3 %}
+        <a href="{{ post.url }}" class="blog-card">
+            {% if post.image %}<img src="{{ post.image }}" alt="{{ post.title }}" class="blog-card-image">{% endif %}
+            <div class="blog-card-content">
+                <time>{{ post.date | date: "%B %d, %Y" }}</time>
+                <h3>{{ post.title }}</h3>
+                <p>{{ post.excerpt | strip_html | truncate: 120 }}</p>
+            </div>
+        </a>
+        {% endfor %}
     </div>
 </section>
 
