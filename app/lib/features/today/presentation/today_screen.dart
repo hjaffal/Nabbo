@@ -14,6 +14,7 @@ import '../../../core/theme/category_icons.dart';
 import '../../../core/services/weather_service.dart';
 import '../../../core/l10n/strings.dart';
 import '../../../core/widgets/nabbo_widgets.dart';
+import '../../../core/widgets/animated_list_item.dart';
 import '../../household/data/models/household_model.dart';
 import '../../household/data/repositories/household_repository.dart';
 import '../../items/data/models/item_model.dart';
@@ -445,23 +446,26 @@ class _FeedListState extends State<_FeedList> {
                               items[index - 1].dateTime, entry.dateTime) ||
                           items[index - 1].isPending != entry.isPending;
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (showDateHeader) ...[
-                            if (index > 0)
-                              const SizedBox(height: AppSpacing.xl),
-                            _DateHeader(
-                                date: entry.dateTime,
-                                isPending: entry.isPending),
-                            const SizedBox(height: AppSpacing.md),
+                      return AnimatedListItem(
+                        index: index,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (showDateHeader) ...[
+                              if (index > 0)
+                                const SizedBox(height: AppSpacing.xl),
+                              _DateHeader(
+                                  date: entry.dateTime,
+                                  isPending: entry.isPending),
+                              const SizedBox(height: AppSpacing.md),
+                            ],
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: AppSpacing.md),
+                              child: _buildSwipeable(context, entry, householdId, memberInfo),
+                            ),
                           ],
-                          Padding(
-                            padding:
-                                const EdgeInsets.only(bottom: AppSpacing.md),
-                            child: _buildSwipeable(context, entry, householdId, memberInfo),
-                          ),
-                        ],
+                        ),
                       );
                     },
                     childCount: items.length,
@@ -582,8 +586,17 @@ class _FeedListState extends State<_FeedList> {
           }
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('${entry.title} done'),
-              action: SnackBarAction(label: 'Undo', onPressed: () {
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('${entry.title} done')),
+                ],
+              ),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: AppColors.softGreen,
+              action: SnackBarAction(label: 'Undo', textColor: Colors.white, onPressed: () {
                 if (entry.isRecurring && entry.occurrenceDate != null) {
                   final dateStr = '${entry.occurrenceDate!.year}-${entry.occurrenceDate!.month.toString().padLeft(2, '0')}-${entry.occurrenceDate!.day.toString().padLeft(2, '0')}';
                   FirebaseFirestore.instance.collection('households').doc(householdId).collection('items').doc(itemId).update({
@@ -1370,30 +1383,104 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                    color: AppColors.greenLight, shape: BoxShape.circle),
-                child: const Icon(Icons.check_rounded,
-                    size: 40, color: AppColors.softGreen)),
-            const SizedBox(height: 20),
-            Text(AppStrings.get('nothing_in_feed'),
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center),
+            // Illustration: floating emoji cluster
+            SizedBox(
+              height: 120,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    top: 10, left: 30,
+                    child: _FloatingEmoji(emoji: '📬', size: 32, delay: 0),
+                  ),
+                  Positioned(
+                    top: 0, right: 40,
+                    child: _FloatingEmoji(emoji: '✨', size: 24, delay: 200),
+                  ),
+                  Positioned(
+                    bottom: 10, left: 50,
+                    child: _FloatingEmoji(emoji: '🏠', size: 40, delay: 100),
+                  ),
+                  Positioned(
+                    bottom: 20, right: 30,
+                    child: _FloatingEmoji(emoji: '☀️', size: 28, delay: 300),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Your family feed is clear',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(AppStrings.get('capture_to_start'),
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppColors.textSecondary),
-                textAlign: TextAlign.center),
+            Text(
+              'Forward an email, share a message,\nor speak a quick reminder to get started.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Small floating emoji with a gentle bob animation
+class _FloatingEmoji extends StatefulWidget {
+  final String emoji;
+  final double size;
+  final int delay;
+  const _FloatingEmoji({required this.emoji, required this.size, required this.delay});
+
+  @override
+  State<_FloatingEmoji> createState() => _FloatingEmojiState();
+}
+
+class _FloatingEmojiState extends State<_FloatingEmoji> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _bounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+    _bounce = Tween<double>(begin: 0, end: 6).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _controller.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _bounce,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, -_bounce.value),
+        child: child,
+      ),
+      child: Text(widget.emoji, style: TextStyle(fontSize: widget.size)),
     );
   }
 }

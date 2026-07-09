@@ -590,7 +590,18 @@ class _ItemReviewCard extends ConsumerWidget {
       final msg = item.action == ItemAction.cancel
           ? 'Item cancelled.'
           : (item.action == ItemAction.update ? 'Change applied.' : 'Approved and added to feed.');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(msg)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: AppColors.primary,
+      ));
     }
   }
 

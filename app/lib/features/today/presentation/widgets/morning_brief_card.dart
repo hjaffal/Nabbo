@@ -127,7 +127,20 @@ class _MorningBriefCardState extends State<MorningBriefCard> {
     required List<_BriefItem> noOwnerItems,
     required bool hasContent,
   }) {
-    return Container(
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.scale(
+            scale: 0.95 + (0.05 * value),
+            child: child,
+          ),
+        );
+      },
+      child: Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -236,6 +249,7 @@ class _MorningBriefCardState extends State<MorningBriefCard> {
             ],
           ),
         ],
+      ),
       ),
     );
   }

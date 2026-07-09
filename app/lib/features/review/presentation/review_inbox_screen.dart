@@ -1,4 +1,3 @@
-import '../../../core/l10n/strings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -242,8 +241,18 @@ class _ReviewCardPreview extends ConsumerWidget {
   Future<void> _approve(BuildContext context, WidgetRef ref) async {
     await ref.read(itemRepositoryProvider).approve(householdId, item.id);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Approved and added to feed.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Expanded(child: Text('Approved and added to feed.')),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: AppColors.primary,
+      ));
     }
   }
 
@@ -264,31 +273,36 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              width: 80,
+              height: 80,
               decoration: const BoxDecoration(
                 color: AppColors.greenLight,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_rounded,
-                  size: 40, color: AppColors.softGreen),
+              child: const Center(
+                child: Text('✅', style: TextStyle(fontSize: 36)),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Text(
-              AppStrings.get('all_caught_up'),
-              style: Theme.of(context).textTheme.titleMedium,
+              'All caught up!',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              AppStrings.get('nothing_to_review'),
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: AppColors.textSecondary),
+              'No items waiting for your review.\nNew extractions will appear here.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
