@@ -3,6 +3,14 @@
 <title>{{ page.title | default: site.title }} — Nabbo</title>
 <meta name="description" content="{{ page.description | default: site.description }}">
 <meta name="theme-color" content="#6C5CE7">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0Y136RVTEW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0Y136RVTEW');
+</script>
 {% seo %}
 <meta property="og:image" content="{{ site.url }}/assets/images/iPhone-6-9-V02-00.png">
 <link rel="canonical" href="{{ site.url }}{{ page.url }}">
